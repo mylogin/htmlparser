@@ -5,7 +5,7 @@
 int main(int argc, char *argv[]) {
 	
 	std::ifstream ifs("test/example.html");
-	if (!ifs.is_open()) {
+	if(!ifs.is_open()) {
 		std::cout << "specify html file\n";
 		std::cin.get();
 		return 0;
@@ -17,11 +17,13 @@ int main(int argc, char *argv[]) {
 	
 	std::cout << "\n1. Callbacks: (called when the document is parsed):";
 	p.set_callback("meta[http-equiv='Content-Type'][content*='charset=']", [](html::node& n) {
-		std::cout << "\n\nCallback function with selector:\n";
-		std::cout << n.to_html();
+		if (n.type_node == html::node_t::tag && n.type_tag == html::tag_t::open) {
+			std::cout << "\n\nCallback function with selector:\n";
+			std::cout << n.to_html();
+		}
 	});
 	p.set_callback([](html::node& n) {
-		if(n.type_node == html::node_t::tag && n.tag_name == "meta") {
+		if(n.type_node == html::node_t::tag && n.type_tag == html::tag_t::open && n.tag_name == "meta") {
 			if(n.get_attr("http-equiv") == "Content-Type" && n.get_attr("content").find("charset=") != std::string::npos) {
 				std::cout << "\n\nCallback function without selector:\n";
 				std::cout << n.to_html();
@@ -95,6 +97,8 @@ int main(int argc, char *argv[]) {
 	
 	std::cout << div->to_html();
 	std::cout << "\n";
-	
+
+	return 0;
+		
 }
 

@@ -1,12 +1,16 @@
 CXX := g++
-CXX_FLAGS := -Wall -std=c++11 -g
-EXECUTABLE := example
+CXX_FLAGS := -Wall -std=c++11
+EXAMPLE := example
+SELECTORS := selectors
 
 .PHONY: all clean
 
-all: $(EXECUTABLE)
+all: $(EXAMPLE) $(SELECTORS)
 
-$(EXECUTABLE): html.o example.o
+$(EXAMPLE): html.o example.o
+	$(CXX) $(CXX_FLAGS) -o $@ $^
+
+$(SELECTORS): html.o selectors.o
 	$(CXX) $(CXX_FLAGS) -o $@ $^
 
 html.o: html.cpp html.hpp
@@ -15,5 +19,8 @@ html.o: html.cpp html.hpp
 example.o: test/example.cpp html.hpp
 	$(CXX) $(CXX_FLAGS) -I. -c -o $@ $<
 
+selectors.o: test/selectors.cpp html.hpp
+	$(CXX) $(CXX_FLAGS) -I. -c -o $@ $<
+
 clean:
-	-rm -f *.o $(EXECUTABLE)
+	-rm -f *.o $(EXAMPLE) $(SELECTORS)

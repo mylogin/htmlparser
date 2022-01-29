@@ -7,6 +7,12 @@ std::vector<std::string> inline_tags = {"b", "big", "i", "small", "tt",
 	"time", "var", "a", "bdo", "br", "img", "map", "object", "q",
 	"span", "sub", "sup", "button", "input", "label", "select", "textarea"};
 
+std::vector<std::string> void_tags = {"area", "base", "br", "col", "embed",
+	"hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
+
+std::vector<std::string> rawtext_tags = {"title", "textarea", "style", "script",
+	"noscript", "plaintext", "iframe", "xmp", "noembed", "noframes"};
+
 selector::selector(std::string s) {
 	selector_matcher matcher;
 	condition match_condition;
@@ -85,7 +91,6 @@ selector::selector(std::string s) {
 					reconsume = true;
 					state = SEL_STATE_TAG;
 				} else if(c == '(') {
-					save_cond(match_condition.attr_operator);
 					state = SEL_STATE_INDEX;
 				} else {
 					match_condition.attr_operator += c;
@@ -178,7 +183,7 @@ bool selector::condition::operator()(const node& d) const {
 	if(attr_operator == "eq") {
 		return d.index == std::stoi(index);
 	}
-	if(attr_operator == "qt") {
+	if(attr_operator == "gt") {
 		return d.index > std::stoi(index);
 	}
 	if(attr_operator == "lt") {
@@ -194,7 +199,7 @@ bool selector::condition::operator()(const node& d) const {
 		} else if(attr_operator == "^=") {
 			return it->second.find(attr_value) == 0;
 		} else if(attr_operator == "$=") {
-			return it->second.find(attr_value) == attr_value.size() - 1;
+			return attr_value.size() <= it->second.size() && it->second.find(attr_value) == it->second.size() - attr_value.size();
 		} else if(attr_operator == "!=") {
 			return it->second != attr_value;
 		} else if(attr_operator == "*=") {
@@ -206,6 +211,9 @@ bool selector::condition::operator()(const node& d) const {
 }
 
 bool selector::selector_matcher::operator()(const node& d) const {
+	if (d.type_node != node_t::tag) {
+		return false;
+	}
 	if(this->all_match) {
 		return true;
 	}
@@ -273,7 +281,6 @@ node_ptr node::select(const selector s) {
 			walk(*c, [&](node& i) {
 				if(matcher(i)) {
 					matched_dom->children.push_back(i.shared_from_this());
-					return false;
 				}
 				return true;
 			});
@@ -294,7 +301,7 @@ void node::to_html(std::ostream& out, bool child, int deep, char ind, bool& is_b
 			return !std::isspace(c);
 		})) {
 			auto str = content_text;
-			if(parent->tag_name != "script" && parent->tag_name != "style") {
+			if(std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
 				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
 			}
 			if(is_block) {
@@ -366,6 +373,12 @@ void node::set_attr(const std::string& key, const std::string& val) {
 
 void node::append(node_ptr& n) {
 	n->parent = this;
+	if(n->type_node == node_t::tag) {
+		n->index = this->node_count++;
+	}
+	if(std::find(void_tags.begin(), void_tags.end(), n->tag_name) != void_tags.end()) {
+		n->self_closing = true;
+	}
 	children.push_back(n);
 }
 
@@ -411,9 +424,13 @@ void parser::handle_node() {
 			new_node->index = current_ptr->node_count++;
 			current_ptr->children.push_back(new_node);
 			if(!new_node->self_closing) {
-				current_ptr = new_node.get();
-				if(new_node->tag_name == "script") {
-					state = STATE_SCRIPT_DATA;
+				if(std::find(void_tags.begin(), void_tags.end(), new_node->tag_name) != void_tags.end()) {
+					new_node->self_closing = true;
+				} else if(std::find(rawtext_tags.begin(), rawtext_tags.end(), new_node->tag_name) != rawtext_tags.end()) {
+					current_ptr = new_node.get();
+					state = STATE_RAWTEXT;
+				} else {
+					current_ptr = new_node.get();
 				}
 			}
 			(*this)(*new_node);
@@ -441,7 +458,7 @@ void parser::handle_node() {
 				(*this)(*new_node);
 			}
 		}
-	} else if(new_node->type_node == node_t::text){
+	} else if(new_node->type_node == node_t::text) {
 		if(!new_node->content_text.empty()) {
 			current_ptr->children.push_back(new_node);
 			(*this)(*new_node);
@@ -455,7 +472,6 @@ void parser::handle_node() {
 }
 
 node_ptr html::parser::parse(const std::string& html) {
-	int state = STATE_DATA;
 	bool eof = false;
 	char c;
 	bool reconsume = false;
@@ -479,6 +495,7 @@ node_ptr html::parser::parse(const std::string& html) {
 		}
 		return true;
 	};
+	state = STATE_DATA;
 	auto _parent = std::make_shared<node>();
 	current_ptr = _parent.get();
 	new_node = std::make_shared<node>(current_ptr);
@@ -500,9 +517,9 @@ node_ptr html::parser::parse(const std::string& html) {
 					new_node->content_text += c;
 				}
 			break;
-			case STATE_SCRIPT_DATA: // 4
+			case STATE_RAWTEXT: // 3
 				if(c == '<') {
-					state = STATE_SCRIPT_DATA_LESS_THAN_SIGN;
+					state = STATE_RAWTEXT_LESS_THAN_SIGN;
 				} else if(c == 0x00) {
 					new_node->content_text += '_';
 				} else {
@@ -563,42 +580,42 @@ node_ptr html::parser::parse(const std::string& html) {
 					new_node->tag_name += c;
 				}
 			break;
-			case STATE_SCRIPT_DATA_LESS_THAN_SIGN: // 15
+			case STATE_RAWTEXT_LESS_THAN_SIGN: // 12
 				if(c == '/') {
-					state = STATE_SCRIPT_DATA_END_TAG_OPEN;
+					state = STATE_RAWTEXT_END_TAG_OPEN;
 				} else {
 					new_node->content_text += '<';
 					reconsume = true;
-					state = STATE_SCRIPT_DATA;
+					state = STATE_RAWTEXT;
 				}
 			break;
-			case STATE_SCRIPT_DATA_END_TAG_OPEN: // 16
+			case STATE_RAWTEXT_END_TAG_OPEN: // 13
 				if(std::isalpha(c)) {
 					new_node->type_node = node_t::tag;
 					new_node->type_tag = tag_t::close;
 					reconsume = true;
-					state = STATE_SCRIPT_DATA_END_TAG_NAME;
+					state = STATE_RAWTEXT_END_TAG_NAME;
 				} else {
 					new_node->content_text += '<';
 					new_node->content_text += '/';
 					reconsume = true;
-					state = STATE_SCRIPT_DATA;
+					state = STATE_RAWTEXT;
 				}
 			break;
-			case STATE_SCRIPT_DATA_END_TAG_NAME: { // 17
+			case STATE_RAWTEXT_END_TAG_NAME: { // 14
 				bool anything_else = true;
 				if(c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20) {
-					if(new_node->tag_name == "script") {
+					if(new_node->tag_name == current_ptr->tag_name) {
 						state = STATE_BEFORE_ATTRIBUTE_NAME;
 						anything_else = false;
 					}
 				} else if(c == '/') {
-					if(new_node->tag_name == "script") {
+					if(new_node->tag_name == current_ptr->tag_name) {
 						state = STATE_SELF_CLOSING;
 						anything_else = false;
 					}
 				} else if(c == '>') {
-					if(new_node->tag_name == "script") {
+					if(new_node->tag_name == current_ptr->tag_name) {
 						state = STATE_DATA;
 						handle_node();
 						anything_else = false;
@@ -613,7 +630,7 @@ node_ptr html::parser::parse(const std::string& html) {
 					new_node->content_text += new_node->tag_name;
 					new_node->tag_name.clear();
 					reconsume = true;
-					state = STATE_SCRIPT_DATA;
+					state = STATE_RAWTEXT;
 				}
 			}
 			break;

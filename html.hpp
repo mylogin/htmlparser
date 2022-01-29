@@ -9,15 +9,17 @@
 #include <regex>
 #include <cctype>
 #include <algorithm>
+#include <map>
+#include <utility>
 
 #define STATE_DATA 0
-#define STATE_SCRIPT_DATA 4
+#define STATE_RAWTEXT 3
 #define STATE_TAG_OPEN 6
 #define STATE_END_TAG_OPEN 7
 #define STATE_TAG_NAME 8
-#define STATE_SCRIPT_DATA_LESS_THAN_SIGN 15
-#define STATE_SCRIPT_DATA_END_TAG_OPEN 16
-#define STATE_SCRIPT_DATA_END_TAG_NAME 17
+#define STATE_RAWTEXT_LESS_THAN_SIGN 12
+#define STATE_RAWTEXT_END_TAG_OPEN 13
+#define STATE_RAWTEXT_END_TAG_NAME 14
 #define STATE_BEFORE_ATTRIBUTE_NAME 32
 #define STATE_ATTRIBUTE_NAME 33
 #define STATE_AFTER_ATTRIBUTE_NAME 34
@@ -159,7 +161,7 @@ namespace html {
 	private:
 		void operator()(node&);
 		void handle_node();
-		int state;
+		int state = STATE_DATA;
 		node* current_ptr;
 		node_ptr new_node;
 		std::vector<std::pair<selector, std::function<void(node&)>>> callback_node;
