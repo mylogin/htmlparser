@@ -1,14 +1,22 @@
 ## Usage
 
-### Get node properties
+### Direct access to nodes
 ```cpp
 html::parser p;
-html::node_ptr node = p.parse(R"(<div attr="val">text</div>)");
-std::vector<html::node_ptr> children = node->get_children();
-std::cout << "Tag name: " << children[0]->tag_name << std::endl; // div
-std::cout << "Attr value: " << children[0]->get_attr("attr") << std::endl; // val
-children = children[0]->get_children();
-std::cout << "Text node: " << children[0]->content_text << std::endl; // text
+html::node_ptr node = p.parse(R"(<!DOCTYPE html><div attr="val">text</div><!--comment-->)");
+// `parse` method returns root node of type html::node_t::none
+assert(node->type_node == html::node_t::none);
+assert(node->at(0)->type_node == html::node_t::doctype);
+assert(node->at(1)->type_node == html::node_t::tag);
+assert(node->at(1)->at(0)->type_node == html::node_t::text);
+assert(node->at(2)->type_node == html::node_t::comment);
+std::cout << "Number of children elements: " << node->size() << std::endl; // 3
+std::cout << "DOCTYPE: " << node->at(0)->content_text << std::endl; // html
+std::cout << "Tag name: " << node->at(1)->tag_name << std::endl; // div
+std::cout << "Attr value: " << node->at(1)->get_attr("attr") << std::endl; // val
+std::cout << "Text node: " << node->at(1)->at(0)->content_text << std::endl; // text
+std::cout << "Comment: " << node->at(2)->content_text << std::endl; // comment
+std::cout << "Print all: " << std::endl << node->to_html() << std::endl;
 ```
 
 ### Access nodes using `select` method

@@ -76,8 +76,17 @@ namespace html {
 	class node : public std::enable_shared_from_this<node> {
 	public:
 		node(node* parent = nullptr) : parent(parent) {}
-		node(node&& d);
-		node& operator=(node&& d);
+		node(node&&);
+		node& operator=(node&&);
+		node_ptr at(size_t i) const {
+			return children[i];
+		}
+		size_t size() const {
+			return children.size();
+		}
+		bool empty() const {
+			return children.empty();
+		}
 		node_ptr select(const selector);
 		std::string to_html(char indent = '	', bool child = true) const;
 		node* get_parent() const {
@@ -89,13 +98,13 @@ namespace html {
 		std::string get_attr(const std::string&) const;
 		void set_attr(const std::string&, const std::string&);
 		void append(node_ptr&);
+		void walk(std::function<bool(node&)>);
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
 		bool self_closing = false;
 		bool bogus_comment = false;
 		std::string tag_name;
 		std::string content_text;
-		void walk(std::function<bool(node&)>);
 	private:
 		std::map<std::string, std::string> attributes;
 		node* parent;
