@@ -348,7 +348,7 @@ void node::to_html(std::ostream& out, bool child, int deep, char ind, bool& is_b
 		if(pos) {
 			out << "\n" << std::string(deep, ind);
 		}
-		out << "<!DOCTYPE" << content_text << ">";
+		out << "<!DOCTYPE " << content_text << ">";
 	}
 }
 
@@ -767,7 +767,7 @@ node_ptr html::parser::parse(const std::string& html) {
 					handle_node();
 					new_node->type_node = node_t::comment;
 				} else if(get_string("DOCTYPE")) {
-					state = STATE_DOCTYPE;
+					state = STATE_BEFORE_DOCTYPE_NAME;
 					handle_node();
 					new_node->type_node = node_t::doctype;
 				} else {
@@ -830,7 +830,21 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_COMMENT;
 				}
 			break;
-			case STATE_DOCTYPE: // 53
+			case STATE_BEFORE_DOCTYPE_NAME: // 54
+				if(c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20 || c == 0x0D) {
+					// skip
+				} else if(c == '>') {
+					state = STATE_DATA;
+					handle_node();
+				} else if(c == 0x00) {
+					new_node->content_text += '_';
+					state = STATE_DOCTYPE_NAME;
+				} else {
+					new_node->content_text += c;
+					state = STATE_DOCTYPE_NAME;
+				}
+			break;
+			case STATE_DOCTYPE_NAME: // 55
 				if(c == '>') {
 					state = STATE_DATA;
 					handle_node();
