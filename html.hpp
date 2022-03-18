@@ -98,7 +98,7 @@ namespace html {
 		}
 		std::string get_attr(const std::string&) const;
 		void set_attr(const std::string&, const std::string&);
-		void append(node_ptr&);
+		node_ptr append(node_ptr&);
 		void walk(std::function<bool(node&)>);
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
@@ -116,6 +116,7 @@ namespace html {
 		void to_html(std::ostream&, bool, int, char, bool&) const;
 		friend class selector;
 		friend class parser;
+		friend class utils;
 	};
 
 	class selector {
@@ -176,6 +177,11 @@ namespace html {
 		node_ptr new_node;
 		std::vector<std::pair<selector, std::function<void(node&)>>> callback_node;
 		std::vector<std::function<void(err_t, node&)>> callback_err;
+	};
+
+	class utils {
+	public:
+		static std::shared_ptr<html::node> make_node(node_t, const std::string&, const std::map<std::string, std::string>& attributes = {});
 	};
 
 }

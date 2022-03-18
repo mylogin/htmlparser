@@ -371,15 +371,13 @@ void node::set_attr(const std::string& key, const std::string& val) {
 	attributes[key] = val;
 }
 
-void node::append(node_ptr& n) {
+node_ptr node::append(node_ptr& n) {
 	n->parent = this;
 	if(n->type_node == node_t::tag) {
 		n->index = this->node_count++;
 	}
-	if(std::find(void_tags.begin(), void_tags.end(), n->tag_name) != void_tags.end()) {
-		n->self_closing = true;
-	}
 	children.push_back(n);
+	return shared_from_this();
 }
 
 void parser::operator()(node& nodeptr) {
@@ -859,6 +857,23 @@ node_ptr html::parser::parse(const std::string& html) {
 	new_node->type_node = node_t::text;
 	handle_node();
 	return _parent;
+}
+
+std::shared_ptr<html::node> utils::make_node(node_t type, const std::string& str, const std::map<std::string, std::string>& attributes) {
+	auto node = std::make_shared<html::node>();
+	node->type_node = type;
+	if(type == node_t::tag) {
+		node->tag_name = str;
+		if(std::find(void_tags.begin(), void_tags.end(), str) != void_tags.end()) {
+			node->self_closing = true;
+		}
+		if(!attributes.empty()) {
+			node->attributes = attributes;
+		}
+	} else {
+		node->content_text = str;
+	}
+	return node;
 }
 
 }

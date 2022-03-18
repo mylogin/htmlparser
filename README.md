@@ -98,37 +98,13 @@ std::cout << node->to_html(' ', true) << std::endl;
 
 ### Building HTML from DOM tree
 ```cpp
-auto div = std::make_shared<html::node>();
-div->type_node = html::node_t::tag;
-div->tag_name = "div";
-
-auto p = std::make_shared<html::node>();
-p->type_node = html::node_t::tag;
-p->tag_name = "p";
-div->append(p);
-
-auto text = std::make_shared<html::node>();
-text->type_node = html::node_t::text;
-text->content_text = "Link:";
-div->append(text);
-
-auto br = std::make_shared<html::node>();
-br->type_node = html::node_t::tag;
-br->tag_name = "br";
-div->append(br);
-
-auto a = std::make_shared<html::node>();
-a->type_node = html::node_t::tag;
-a->tag_name = "a";
-a->set_attr("href", "https://github.com/");
-div->append(a);
-
-auto a_text = std::make_shared<html::node>();
-a_text->type_node = html::node_t::text;
-a_text->content_text = "Github.com";
-a->append(a_text);
-
-std::cout << div->to_html() << std::endl;
+auto p = html::utils::make_node(html::node_t::tag, "p", {{"id", "p_id"}, {"class", "p_class"}});
+p->append(html::utils::make_node(html::node_t::text, "Link:"));
+p->append(html::utils::make_node(html::node_t::tag, "br"));
+auto a = html::utils::make_node(html::node_t::tag, "a", {{"href", "https://github.com/"}});
+p->append(a);
+a->append(html::utils::make_node(html::node_t::text, "Github.com"));
+std::cout << html::utils::make_node(html::node_t::tag, "div")->append(p)->to_html() << std::endl;
 ```
 
 ## Selectors
