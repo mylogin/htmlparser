@@ -39,14 +39,15 @@
 #define STATE_BEFORE_DOCTYPE_NAME 54
 #define STATE_DOCTYPE_NAME 55
 
-#define SEL_STATE_TAG 0
-#define SEL_STATE_CLASS 1
-#define SEL_STATE_ID 2
-#define SEL_STATE_OPERATOR 3
-#define SEL_STATE_INDEX 4
-#define SEL_STATE_ATTR 5
-#define SEL_STATE_ATTR_OPERATOR 6
-#define SEL_STATE_ATTR_VAL 7
+#define SEL_STATE_ROUTE 0
+#define SEL_STATE_TAG 1
+#define SEL_STATE_CLASS 2
+#define SEL_STATE_ID 3
+#define SEL_STATE_OPERATOR 4
+#define SEL_STATE_INDEX 5
+#define SEL_STATE_ATTR 6
+#define SEL_STATE_ATTR_OPERATOR 7
+#define SEL_STATE_ATTR_VAL 8
 
 namespace html {
 
@@ -150,7 +151,7 @@ namespace html {
 			bool operator()(const node&) const;
 		private:
 			bool all_match = false;
-			std::vector<condition> conditions;
+			std::vector<std::vector<condition>> conditions;
 			friend class selector;
 		};
 		std::vector<selector_matcher>::const_iterator begin() const {

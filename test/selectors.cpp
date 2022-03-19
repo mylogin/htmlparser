@@ -33,7 +33,8 @@ int main(int argc, char* argv[]) {
 		{"attr start with", "[attr^='attr']", true},
 		{"attr ends with", "[attr$='val1']", true},
 		{"attr contains", "[attr2*='alu']", true},
-		{"multiple selectors", "div#id2.class_name:last:eq(2)[attr2^='val'][attr2$='ue']", true},
+		{"all of selectors", "div#id2.class_name:last:eq(2)[attr2^='val'][attr2$='ue']", true},
+		{"any of selectors", "p,div", true},
 		{"nested selectors", "p[attr='attr_val1'] i", false}
 	};
 

@@ -38,7 +38,10 @@ selector::selector(std::string s) {
 	};
 	auto save_cond = [&](const std::string& str) {
 		if(!str.empty()) {
-			matcher.conditions.push_back(std::move(match_condition));
+			if(matcher.conditions.empty()) {
+				matcher.conditions.emplace_back();
+			}
+			matcher.conditions.back().push_back(std::move(match_condition));
 		}
 	};
 	do {
@@ -47,49 +50,55 @@ selector::selector(std::string s) {
 		}
 		reconsume = false;
 		switch(state) {
-			case SEL_STATE_TAG:
+			case SEL_STATE_ROUTE:
 				if(c == 0 || c == ' ') {
-					save_cond(match_condition.tag_name);
 					save_matcher();
+					state = SEL_STATE_TAG;
 				} else if(c == '[') {
-					save_cond(match_condition.tag_name);
 					state = SEL_STATE_ATTR;
 				} else if(c == ':') {
-					save_cond(match_condition.tag_name);
 					state = SEL_STATE_OPERATOR;
 				} else if(c == '.') {
-					save_cond(match_condition.tag_name);
 					state = SEL_STATE_CLASS;
 				} else if(c == '#') {
-					save_cond(match_condition.tag_name);
 					state = SEL_STATE_ID;
+				} else if(c == ',') {
+					matcher.conditions.emplace_back();
+					state = SEL_STATE_TAG;
+				}
+			break;
+			case SEL_STATE_TAG:
+				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
+					save_cond(match_condition.tag_name);
+					reconsume = true;
+					state = SEL_STATE_ROUTE;
 				} else {
 					match_condition.tag_name += c;
 				}
 			break;
 			case SEL_STATE_CLASS:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#') {
+				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
 					save_cond(match_condition.class_name);
 					reconsume = true;
-					state = SEL_STATE_TAG;
+					state = SEL_STATE_ROUTE;
 				} else {
 					match_condition.class_name += c;
 				}
 			break;
 			case SEL_STATE_ID:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#') {
+				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
 					save_cond(match_condition.id);
 					reconsume = true;
-					state = SEL_STATE_TAG;
+					state = SEL_STATE_ROUTE;
 				} else {
 					match_condition.id += c;
 				}
 			break;
 			case SEL_STATE_OPERATOR:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#') {
+				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
 					save_cond(match_condition.attr_operator);
 					reconsume = true;
-					state = SEL_STATE_TAG;
+					state = SEL_STATE_ROUTE;
 				} else if(c == '(') {
 					state = SEL_STATE_INDEX;
 				} else {
@@ -99,7 +108,7 @@ selector::selector(std::string s) {
 			case SEL_STATE_INDEX:
 				if(c == ')') {
 					save_cond(match_condition.index);
-					state = SEL_STATE_TAG;
+					state = SEL_STATE_ROUTE;
 				} else if(std::isdigit(c)) {
 					match_condition.index += c;
 				}
@@ -107,7 +116,7 @@ selector::selector(std::string s) {
 			case SEL_STATE_ATTR:
 				if(c == ']') {
 					save_cond(match_condition.attr);
-					state = SEL_STATE_TAG;
+					state = SEL_STATE_ROUTE;
 				} else if(c == '=' || c == '*' || c == '^' || c == '$' || c == '!') {
 					reconsume = true;
 					state = SEL_STATE_ATTR_OPERATOR;
@@ -211,19 +220,24 @@ bool selector::condition::operator()(const node& d) const {
 }
 
 bool selector::selector_matcher::operator()(const node& d) const {
-	if (d.type_node != node_t::tag) {
+	if(d.type_node != node_t::tag) {
 		return false;
 	}
 	if(this->all_match) {
 		return true;
 	}
 	for(auto& c : conditions) {
-		if(c(d)) {
-			continue;
+		int i = 0;
+		for(; i < c.size(); i++) {
+			if(!c[i](d)) {
+				break;
+			}
 		}
-		return false;
+		if(i == c.size()) {
+			return true;
+		}
 	}
-	return true;
+	return false;
 }
 
 node::node(node&& d)
@@ -361,7 +375,7 @@ std::string node::to_html(char ind, bool child) const {
 
 std::string node::get_attr(const std::string& attr) const {
 	auto it = attributes.find(attr);
-	if (it == attributes.end()) {
+	if(it == attributes.end()) {
 		return std::string();
 	}
 	return it->second;

@@ -124,5 +124,6 @@ std::cout << html::utils::make_node(html::node_t::tag, "div")->append(p)->to_htm
 | [attr^='http:'] | attribute starts with "http:" | √ | √ |
 | [attr$='.jpeg'] | attribute ends with ".jpeg" | √ | √ |
 | [attr*='/path/'] | attribute contains "/path/" | √ | √ |
-| div#id1.class1[attr='val'] | multiple selectors | √ | √ |
+| div#id1.class1[attr='val'] | element that matches all of these selectors | √ | √ |
+| p,div | element that matches any of these selectors | √ | √ |
 | div p i:first | nested selectors | √ | - |
