@@ -109,12 +109,12 @@ namespace html {
 		std::string content_text;
 	private:
 		std::map<std::string, std::string> attributes;
-		node* parent;
+		node* parent = nullptr;
 		std::vector<node_ptr> children;
 		int index = 0;
 		int node_count = 0;
 		void walk(node&, std::function<bool(node&)>);
-		void to_html(std::ostream&, bool, int, char, bool&) const;
+		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
 		friend class selector;
 		friend class parser;
 		friend class utils;

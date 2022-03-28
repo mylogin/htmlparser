@@ -303,12 +303,13 @@ node_ptr node::select(const selector s) {
 	return matched_dom;
 }
 
-void node::to_html(std::ostream& out, bool child, int deep, char ind, bool& is_block) const {
+void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind, bool& last_is_block, bool& sibling_is_block) const {
 	std::streamoff pos = out.tellp();
-	if(type_node == node_t::none) {
-		bool is_block_n = false;
+	if(type_node == node_t::none && child) {
+		bool last_is_block_n = false;
+		bool sibling_is_block_n = false;
 		for(auto& c : children) {
-			c->to_html(out, child, deep, ind, is_block_n);
+			c->to_html(out, child, 0, deep, ind, last_is_block_n, sibling_is_block_n);
 		}
 	} else if(type_node == node_t::text) {
 		if(std::any_of(content_text.begin(), content_text.end(), [](char c) {
@@ -318,17 +319,22 @@ void node::to_html(std::ostream& out, bool child, int deep, char ind, bool& is_b
 			if(std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
 				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
 			}
-			if(is_block) {
+			if(last_is_block) {
 				out << "\n" << std::string(deep, ind);
 			}
 			out << str;
-			is_block = false;
+			last_is_block = false;
 		}
 	} else if(type_node == node_t::tag) {
-		bool old_is_block = is_block;
-		is_block = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
-		if((old_is_block || is_block) && pos && child) {
+		bool old_is_block = last_is_block;
+		last_is_block = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
+		if(child && pos && (old_is_block || last_is_block)) {
 			out << "\n" << std::string(deep, ind);
+			if(level && last_is_block && !sibling_is_block) {
+				sibling_is_block = true;
+				deep++;
+				out << ind;
+			}
 		}
 		out << "<" << tag_name;
 		if(!attributes.empty()) {
@@ -341,35 +347,39 @@ void node::to_html(std::ostream& out, bool child, int deep, char ind, bool& is_b
 		} else {
 			out << ">";
 			if(child) {
-				bool new_is_block = false;
+				bool last_is_block_n = false;
+				bool sibling_is_block_n = false;
 				for(auto& c : children) {
-					c->to_html(out, child, deep + 1, ind, new_is_block);
+					c->to_html(out, child, level + 1, deep, ind, last_is_block_n, sibling_is_block_n);
 				}
-				if(new_is_block) {
+				if(sibling_is_block_n) {
+					if(deep > 0) {
+						deep--;
+					}
 					out << "\n" << std::string(deep, ind);
 				}
 			}
 			out << "</" << tag_name << ">";
 		}
 	} else if(type_node == node_t::comment) {
-		is_block = true;
-		if(pos) {
+		if(last_is_block) {
 			out << "\n" << std::string(deep, ind);
 		}
 		out << "<!--" << content_text << "-->";
+		last_is_block = false;
 	} else if(type_node == node_t::doctype) {
-		is_block = true;
-		if(pos) {
-			out << "\n" << std::string(deep, ind);
-		}
 		out << "<!DOCTYPE " << content_text << ">";
+		last_is_block = true;
+		sibling_is_block = true;
 	}
 }
 
 std::string node::to_html(char ind, bool child) const {
 	std::stringstream ret;
-	bool is_block = false;
-	to_html(ret, child, 0, ind, is_block);
+	bool last_is_block_n = false;
+	bool sibling_is_block_n = false;
+	int deep = 0;
+	to_html(ret, child, 0, deep, ind, last_is_block_n, sibling_is_block_n);
 	return ret.str();
 }
 
