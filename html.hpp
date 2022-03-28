@@ -49,6 +49,12 @@
 #define SEL_STATE_ATTR_OPERATOR 7
 #define SEL_STATE_ATTR_VAL 8
 
+#define IS_UPPERCASE_ALPHA(c) ('A' <= c && c <= 'Z')
+#define IS_LOWERCASE_ALPHA(c) ('a' <= c && c <= 'z')
+#define IS_ALPHA(c) (IS_UPPERCASE_ALPHA(c) || IS_LOWERCASE_ALPHA(c))
+#define IS_DIGIT(c) ('0' <= c && c <= '9')
+#define IS_SPACE(c) (c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20 || c == 0x0D)
+
 namespace html {
 
 	class selector;
