@@ -97,6 +97,7 @@ namespace html {
 		}
 		node_ptr select(const selector);
 		std::string to_html(char indent = '	', bool child = true) const;
+		std::string to_text(bool raw = false) const;
 		node* get_parent() const {
 			return parent;
 		}
@@ -112,7 +113,7 @@ namespace html {
 		bool self_closing = false;
 		bool bogus_comment = false;
 		std::string tag_name;
-		std::string content_text;
+		std::string content;
 	private:
 		std::map<std::string, std::string> attributes;
 		node* parent = nullptr;
@@ -121,6 +122,7 @@ namespace html {
 		int node_count = 0;
 		void walk(node&, std::function<bool(node&)>);
 		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
+		void to_text(std::ostream&, bool&) const;
 		friend class selector;
 		friend class parser;
 		friend class utils;

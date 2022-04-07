@@ -242,7 +242,7 @@ bool selector::selector_matcher::operator()(const node& d) const {
 
 node::node(node&& d)
 	: tag_name(std::move(d.tag_name))
-	, content_text(std::move(d.content_text))
+	, content(std::move(d.content))
 	, attributes(std::move(d.attributes))
 	, parent(std::move(d.parent))
 	, children(std::move(d.children))
@@ -250,7 +250,7 @@ node::node(node&& d)
 	, node_count(d.node_count) {
 	d.tag_name.clear();
 	d.attributes.clear();
-	d.content_text.clear();
+	d.content.clear();
 	d.parent = nullptr;
 	d.children.clear();
 	d.index = 0;
@@ -260,12 +260,12 @@ node::node(node&& d)
 node& node::operator=(node&& d) {
 	attributes = std::move(d.attributes);
 	tag_name = std::move(d.tag_name);
-	content_text = std::move(d.content_text);
+	content = std::move(d.content);
 	parent = std::move(d.parent);
 	children = std::move(d.children);
 	d.tag_name.clear();
 	d.attributes.clear();
-	d.content_text.clear();
+	d.content.clear();
 	d.parent = nullptr;
 	d.children.clear();
 	return *this;
@@ -305,22 +305,20 @@ node_ptr node::select(const selector s) {
 
 void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind, bool& last_is_block, bool& sibling_is_block) const {
 	std::streamoff pos = out.tellp();
-	if(type_node == node_t::none && child) {
-		bool last_is_block_n = false;
-		bool sibling_is_block_n = false;
+	if(type_node == node_t::none) {
 		for(auto& c : children) {
-			c->to_html(out, child, 0, deep, ind, last_is_block_n, sibling_is_block_n);
+			c->to_html(out, child, 0, deep, ind, last_is_block, sibling_is_block);
 		}
 	} else if(type_node == node_t::text) {
-		if(std::any_of(content_text.begin(), content_text.end(), [](char c) {
+		if(std::any_of(content.begin(), content.end(), [](char c) {
 			return !IS_SPACE(c);
 		})) {
-			auto str = content_text;
+			auto str = content;
 			if(std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
 				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
 			}
 			if(last_is_block) {
-				out << "\n" << std::string(deep, ind);
+				out << '\n' << std::string(deep, ind);
 			}
 			out << str;
 			last_is_block = false;
@@ -328,8 +326,8 @@ void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind
 	} else if(type_node == node_t::tag) {
 		bool old_is_block = last_is_block;
 		last_is_block = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
-		if(child && pos && (old_is_block || last_is_block)) {
-			out << "\n" << std::string(deep, ind);
+		if(pos && (old_is_block || last_is_block)) {
+			out << '\n' << std::string(deep, ind);
 			if(level && last_is_block && !sibling_is_block) {
 				sibling_is_block = true;
 				deep++;
@@ -356,19 +354,19 @@ void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind
 					if(deep > 0) {
 						deep--;
 					}
-					out << "\n" << std::string(deep, ind);
+					out << '\n' << std::string(deep, ind);
 				}
 			}
 			out << "</" << tag_name << ">";
 		}
 	} else if(type_node == node_t::comment) {
 		if(last_is_block) {
-			out << "\n" << std::string(deep, ind);
+			out << '\n' << std::string(deep, ind);
 		}
-		out << "<!--" << content_text << "-->";
+		out << "<!--" << content << "-->";
 		last_is_block = false;
 	} else if(type_node == node_t::doctype) {
-		out << "<!DOCTYPE " << content_text << ">";
+		out << "<!DOCTYPE " << content << ">";
 		last_is_block = true;
 		sibling_is_block = true;
 	}
@@ -381,6 +379,48 @@ std::string node::to_html(char ind, bool child) const {
 	int deep = 0;
 	to_html(ret, child, 0, deep, ind, last_is_block_n, sibling_is_block_n);
 	return ret.str();
+}
+
+void node::to_text(std::ostream& out, bool& is_block) const {
+	std::streamoff pos = out.tellp();
+	if(type_node == node_t::none) {
+		for(auto& c : children) {
+			c->to_text(out, is_block);
+		}
+	} else if(type_node == node_t::text) {
+		if(is_block) {
+			if(pos) {
+				out << '\n';
+			}
+			is_block = false;
+		}
+		out << content;
+	} else if(type_node == node_t::tag) {
+		if(tag_name == "br") {
+			out << '\n';
+		}
+		bool is_block_n = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
+		if(is_block_n) {
+			is_block = true;
+		}
+		for(auto& c : children) {
+			c->to_text(out, is_block);
+		}
+		if(is_block_n) {
+			is_block = true;
+		}
+	}
+}
+
+std::string node::to_text(bool raw) const {
+	std::stringstream ret;
+	bool is_block = false;
+	to_text(ret, is_block);
+	auto str = ret.str();
+	if(raw) {
+		str = std::regex_replace(str, std::regex("[\\s]+"), " ");
+	}
+	return str;
 }
 
 std::string node::get_attr(const std::string& attr) const {
@@ -469,11 +509,11 @@ void parser::handle_node() {
 						c(err_t::tag_not_closed, *n);
 					}
 				}
-				if(!new_node->content_text.empty()) {
+				if(!new_node->content.empty()) {
 					auto text_node = std::make_shared<node>(current_ptr);
 					text_node->type_node = node_t::text;
-					text_node->content_text = std::move(new_node->content_text);
-					new_node->content_text.clear();
+					text_node->content = std::move(new_node->content);
+					new_node->content.clear();
 					current_ptr->children.push_back(text_node);
 				}
 				current_ptr = _current_ptr->parent;
@@ -481,7 +521,7 @@ void parser::handle_node() {
 			}
 		}
 	} else if(new_node->type_node == node_t::text) {
-		if(!new_node->content_text.empty()) {
+		if(!new_node->content.empty()) {
 			current_ptr->children.push_back(new_node);
 			(*this)(*new_node);
 		}
@@ -536,16 +576,16 @@ node_ptr html::parser::parse(const std::string& html) {
 				if(c == '<') {
 					state = STATE_TAG_OPEN;
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 			case STATE_RAWTEXT: // 3
 				if(c == '<') {
 					state = STATE_RAWTEXT_LESS_THAN_SIGN;
 				} else if(c == 0x00) {
-					new_node->content_text += '_';
+					new_node->content += '_';
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 			case STATE_TAG_OPEN: // 6
@@ -565,7 +605,7 @@ node_ptr html::parser::parse(const std::string& html) {
 					new_node->type_node = node_t::comment;
 					reconsume = true;
 				} else {
-					new_node->content_text += '<';
+					new_node->content += '<';
 					reconsume = true;
 					state = STATE_DATA;
 				}
@@ -606,7 +646,7 @@ node_ptr html::parser::parse(const std::string& html) {
 				if(c == '/') {
 					state = STATE_RAWTEXT_END_TAG_OPEN;
 				} else {
-					new_node->content_text += '<';
+					new_node->content += '<';
 					reconsume = true;
 					state = STATE_RAWTEXT;
 				}
@@ -618,8 +658,8 @@ node_ptr html::parser::parse(const std::string& html) {
 					reconsume = true;
 					state = STATE_RAWTEXT_END_TAG_NAME;
 				} else {
-					new_node->content_text += '<';
-					new_node->content_text += '/';
+					new_node->content += '<';
+					new_node->content += '/';
 					reconsume = true;
 					state = STATE_RAWTEXT;
 				}
@@ -650,9 +690,9 @@ node_ptr html::parser::parse(const std::string& html) {
 					anything_else = false;
 				}
 				if(anything_else) {
-					new_node->content_text += '<';
-					new_node->content_text += '/';
-					new_node->content_text += new_node->tag_name;
+					new_node->content += '<';
+					new_node->content += '/';
+					new_node->content += new_node->tag_name;
 					new_node->tag_name.clear();
 					reconsume = true;
 					state = STATE_RAWTEXT;
@@ -781,9 +821,9 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_DATA;
 					handle_node();
 				} else if(c == 0x00) {
-					new_node->content_text += '_';
+					new_node->content += '_';
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 			case STATE_MARKUP_DEC_OPEN_STATE: // 42
@@ -800,7 +840,7 @@ node_ptr html::parser::parse(const std::string& html) {
 					handle_node();
 					new_node->type_node = node_t::comment;
 					new_node->bogus_comment = true;
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 			case STATE_COMMENT_START: // 43
@@ -821,7 +861,7 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_DATA;
 					handle_node();
 				} else {
-					new_node->content_text += '-';
+					new_node->content += '-';
 					state = STATE_COMMENT;
 				}
 			break;
@@ -829,16 +869,16 @@ node_ptr html::parser::parse(const std::string& html) {
 				if(c == '-') {
 					state = STATE_COMMENT_END_DASH;
 				} else if(c == 0x00) {
-					new_node->content_text += '_';
+					new_node->content += '_';
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 			case STATE_COMMENT_END_DASH: // 50
 				if(c == '-') {
 					state = STATE_COMMENT_END;
 				} else {
-					new_node->content_text += '-';
+					new_node->content += '-';
 					state = STATE_COMMENT;
 				}
 			break;
@@ -847,10 +887,10 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_DATA;
 					handle_node();
 				} else if(c == '-') {
-					new_node->content_text += c;
+					new_node->content += c;
 				} else {
-					new_node->content_text += '-';
-					new_node->content_text += '-';
+					new_node->content += '-';
+					new_node->content += '-';
 					reconsume = true;
 					state = STATE_COMMENT;
 				}
@@ -862,10 +902,10 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_DATA;
 					handle_node();
 				} else if(c == 0x00) {
-					new_node->content_text += '_';
+					new_node->content += '_';
 					state = STATE_DOCTYPE_NAME;
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 					state = STATE_DOCTYPE_NAME;
 				}
 			break;
@@ -874,9 +914,9 @@ node_ptr html::parser::parse(const std::string& html) {
 					state = STATE_DATA;
 					handle_node();
 				} else if(c == 0x00) {
-					new_node->content_text += '_';
+					new_node->content += '_';
 				} else {
-					new_node->content_text += c;
+					new_node->content += c;
 				}
 			break;
 		}
@@ -898,7 +938,7 @@ std::shared_ptr<html::node> utils::make_node(node_t type, const std::string& str
 			node->attributes = attributes;
 		}
 	} else {
-		node->content_text = str;
+		node->content = str;
 	}
 	return node;
 }
