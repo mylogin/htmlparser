@@ -227,7 +227,7 @@ bool selector::selector_matcher::operator()(const node& d) const {
 		return true;
 	}
 	for(auto& c : conditions) {
-		int i = 0;
+		size_t i = 0;
 		for(; i < c.size(); i++) {
 			if(!c[i](d)) {
 				break;

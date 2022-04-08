@@ -34,16 +34,14 @@ int main(int argc, char *argv[]) {
 		if(e == html::err_t::tag_not_closed) {
 			std::cout << "\n\nCallback function to handle errors:";
 			std::cout << "\nTag not closed: " << n.to_html(' ', false);
-			std::vector<std::string> v;
+			std::string msg;
 			html::node* current = &n;
-			do {
-				v.push_back(current->tag_name);
+			while(current->get_parent()) {
+				msg.insert(0, " " + current->tag_name);
 				current = current->get_parent();
-			} while(current->get_parent());
-			std::cout << "\nPath:";
-			for (auto it = v.rbegin(); it != v.rend(); it++) {
-				std::cout << " " << *it;
 			}
+			msg.insert(0, "\nPath:");
+			std::cout << msg;
 		}
 	});
 	html::node_ptr n = p.parse(page);
@@ -75,7 +73,7 @@ int main(int argc, char *argv[]) {
 	
 	auto text = std::make_shared<html::node>();
 	text->type_node = html::node_t::text;
-	text->content_text = "Link:";
+	text->content = "Link:";
 	div->append(text);
 	
 	auto br = std::make_shared<html::node>();
@@ -92,7 +90,7 @@ int main(int argc, char *argv[]) {
 	
 	auto a_text = std::make_shared<html::node>();
 	a_text->type_node = html::node_t::text;
-	a_text->content_text = "Github.com";
+	a_text->content = "Github.com";
 	a->append(a_text);
 	
 	std::cout << div->to_html();

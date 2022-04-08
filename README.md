@@ -11,11 +11,11 @@ assert(node->at(1)->type_node == html::node_t::tag);
 assert(node->at(1)->at(0)->type_node == html::node_t::text);
 assert(node->at(2)->type_node == html::node_t::comment);
 std::cout << "Number of children elements: " << node->size() << std::endl; // 3
-std::cout << "DOCTYPE: " << node->at(0)->content_text << std::endl; // html
+std::cout << "DOCTYPE: " << node->at(0)->content << std::endl; // html
 std::cout << "Tag name: " << node->at(1)->tag_name << std::endl; // div
 std::cout << "Attr value: " << node->at(1)->get_attr("attr") << std::endl; // val
-std::cout << "Text node: " << node->at(1)->at(0)->content_text << std::endl; // text
-std::cout << "Comment: " << node->at(2)->content_text << std::endl; // comment
+std::cout << "Text node: " << node->at(1)->at(0)->content << std::endl; // text
+std::cout << "Comment: " << node->at(2)->content << std::endl; // comment
 std::cout << "Print all: " << std::endl << node->to_html() << std::endl;
 ```
 
@@ -94,6 +94,17 @@ html::node_ptr node = p.parse("<ul><li>li1</li><li>li2</li></ul><ol><li>li</li><
 
 // method takes two arguments, the indentation character and whether to output child elements (tabulation and true by default)
 std::cout << node->to_html(' ', true) << std::endl;
+```
+
+### Print text content of a node
+```cpp
+html::parser p;
+html::node_ptr node = p.parse("<div><p><b>First</b> p</p><p><i>Second</i> p</p>Text<br />Text</div>");
+
+// print text with line breaks preserved
+std::cout << node->to_text() << std::endl << std::endl;
+// print text with line breaks replaced with spaces
+std::cout << node->to_text(true) << std::endl;
 ```
 
 ### Building HTML from DOM tree
