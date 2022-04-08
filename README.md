@@ -130,6 +130,7 @@ std::cout << html::utils::make_node(html::node_t::tag, "div")->append(p)->to_htm
 | :eq(3) | element index = 3 (starts from 0) | √ | √ |
 | :gt(3) | element index > 3 (starts from 0) | √ | √ |
 | :lt(3) | element index < 3 (starts from 0) | √ | √ |
+| [attr] | element that have attribute "attr" | √ | √ |
 | [attr='val'] | attribute is equal to "val" | √ | √ |
 | [attr!='val'] | attribute is not equal to "val" or does not exist | √ | √ |
 | [attr^='http:'] | attribute starts with "http:" | √ | √ |

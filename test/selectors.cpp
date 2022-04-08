@@ -28,6 +28,7 @@ int main(int argc, char* argv[]) {
 		{"specified index", ":eq(1)", true},
 		{"greater than", ":gt(1)", true},
 		{"less than", ":lt(1)", true},
+		{"attr exist", "[attr]", true},
 		{"attr equal", "[attr='attr_val2']", true},
 		{"attr not equal", "[attr!='attr_val2']", true},
 		{"attr start with", "[attr^='attr']", true},
