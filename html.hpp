@@ -114,12 +114,12 @@ namespace html {
 		bool bogus_comment = false;
 		std::string tag_name;
 		std::string content;
-	private:
 		std::map<std::string, std::string> attributes;
 		node* parent = nullptr;
 		std::vector<node_ptr> children;
 		int index = 0;
 		int node_count = 0;
+	private:
 		void walk(node&, std::function<bool(node&)>);
 		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
 		void to_text(std::ostream&, bool&) const;

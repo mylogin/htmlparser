@@ -23,7 +23,12 @@ std::cout << "Print all: " << std::endl << node->to_html() << std::endl;
 ```cpp
 html::parser p;
 html::node_ptr node = p.parse(R"(<div id="my_id"><p class="my_class"></p></div>)");
-std::cout << node->select("div#my_id p.my_class")->to_html() << std::endl;
+auto selected = node->select("div#my_id p.my_class");
+std::cout << selected->to_html() << std::endl;
+for (auto& elem : selected->children) {
+	std::cout << "Tag: " << elem->tag_name << std::endl;
+	std::cout << "Attr: " << elem->get_attr("class");
+}
 ```
 
 ### Access nodes using callbacks (called when parsing HTML)

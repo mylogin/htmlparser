@@ -48,7 +48,12 @@ int main(int argc, char *argv[]) {
 	p.clear_callbacks();
 	
 	std::cout << "\n\n2. `select` method (scans already parsed document):\n";
-	std::cout << n->select("html body h1#my_h1")->to_html();
+	auto selected = n->select("html body h1#my_h1");
+	std::cout << selected->to_html() << "\n";
+	for (auto& elem : selected->children) {
+		std::cout << "Tag: " << elem->tag_name << "\n";
+		std::cout << "Attr: " << elem->get_attr("id");
+	}
 	
 	std::cout << "\n\n3. Manual search in an already parsed document:\n";
 	std::cout << "search `li` tags which not in `ol`:";
