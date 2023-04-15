@@ -72,6 +72,8 @@ selector::selector(std::string s) {
 					save_cond(match_condition.tag_name);
 					reconsume = true;
 					state = SEL_STATE_ROUTE;
+				} else if(IS_UPPERCASE_ALPHA(c)) {
+					match_condition.tag_name += std::tolower(c);
 				} else {
 					match_condition.tag_name += c;
 				}
@@ -101,6 +103,8 @@ selector::selector(std::string s) {
 					state = SEL_STATE_ROUTE;
 				} else if(c == '(') {
 					state = SEL_STATE_INDEX;
+				} else if(IS_UPPERCASE_ALPHA(c)) {
+					match_condition.attr_operator += std::tolower(c);
 				} else {
 					match_condition.attr_operator += c;
 				}
@@ -120,6 +124,8 @@ selector::selector(std::string s) {
 				} else if(c == '=' || c == '*' || c == '^' || c == '$' || c == '!') {
 					reconsume = true;
 					state = SEL_STATE_ATTR_OPERATOR;
+				} else if(IS_UPPERCASE_ALPHA(c)) {
+					match_condition.attr += std::tolower(c);
 				} else {
 					match_condition.attr += c;
 				}
