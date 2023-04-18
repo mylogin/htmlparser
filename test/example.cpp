@@ -48,9 +48,9 @@ int main(int argc, char *argv[]) {
 	p.clear_callbacks();
 	
 	std::cout << "\n\n2. `select` method (scans already parsed document):\n";
-	auto selected = n->select("html body h1#my_h1");
+	html::node_ptr selected = n->select("html body h1#my_h1");
 	std::cout << selected->to_html() << "\n";
-	for (auto& elem : selected->children) {
+	for(auto& elem : *selected) {
 		std::cout << "Tag: " << elem->tag_name << "\n";
 		std::cout << "Attr: " << elem->get_attr("id");
 	}
@@ -72,28 +72,29 @@ int main(int argc, char *argv[]) {
 	
 	std::cout << "\n\n5. Build document:\n";
 	
-	auto div = std::make_shared<html::node>();
+	html::node_ptr div = std::make_shared<html::node>();
 	div->type_node = html::node_t::tag;
 	div->tag_name = "div";
 	
-	auto text = std::make_shared<html::node>();
+	html::node_ptr text = std::make_shared<html::node>();
 	text->type_node = html::node_t::text;
 	text->content = "Link:";
 	div->append(text);
 	
-	auto br = std::make_shared<html::node>();
+	html::node_ptr br = std::make_shared<html::node>();
 	br->type_node = html::node_t::tag;
 	br->tag_name = "br";
 	br->self_closing = true;
 	div->append(br);
+	div->append(br);
 	
-	auto a = std::make_shared<html::node>();
+	html::node_ptr a = std::make_shared<html::node>();
 	a->type_node = html::node_t::tag;
 	a->tag_name = "a";
 	a->set_attr("href", "https://github.com/");
 	div->append(a);
 	
-	auto a_text = std::make_shared<html::node>();
+	html::node_ptr a_text = std::make_shared<html::node>();
 	a_text->type_node = html::node_t::text;
 	a_text->content = "Github.com";
 	a->append(a_text);

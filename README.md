@@ -25,7 +25,7 @@ html::parser p;
 html::node_ptr node = p.parse(R"(<div id="my_id"><p class="my_class"></p></div>)");
 auto selected = node->select("div#my_id p.my_class");
 std::cout << selected->to_html() << std::endl;
-for (auto& elem : selected->children) {
+for(auto& elem : *selected) {
 	std::cout << "Tag: " << elem->tag_name << std::endl;
 	std::cout << "Attr: " << elem->get_attr("class");
 }

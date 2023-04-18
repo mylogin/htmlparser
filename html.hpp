@@ -87,13 +87,22 @@ namespace html {
 		node(node&&);
 		node& operator=(node&&);
 		node_ptr at(size_t i) const {
-			return children[i];
+			if(i < children.size()) {
+				return children[i];
+			}
+			return std::make_shared<node>();
 		}
 		size_t size() const {
 			return children.size();
 		}
 		bool empty() const {
 			return children.empty();
+		}
+		std::vector<node_ptr>::iterator begin() {
+			return children.begin();
+		}
+		std::vector<node_ptr>::iterator end() {
+			return children.end();
 		}
 		node_ptr select(const selector);
 		std::string to_html(char indent = '	', bool child = true) const;
@@ -111,15 +120,17 @@ namespace html {
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
 		bool self_closing = false;
-		bool bogus_comment = false;
 		std::string tag_name;
 		std::string content;
 		std::map<std::string, std::string> attributes;
+	private:
 		node* parent = nullptr;
+		bool bogus_comment = false;
 		std::vector<node_ptr> children;
 		int index = 0;
 		int node_count = 0;
-	private:
+		bool inserted = false;
+		void copy(node&, node* parent);
 		void walk(node&, std::function<bool(node&)>);
 		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
 		void to_text(std::ostream&, bool&) const;
