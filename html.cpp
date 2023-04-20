@@ -289,22 +289,26 @@ void node::walk(node& d, std::function<bool(node&)> handler) {
 	}
 }
 
-node_ptr node::select(const selector s) {
+node_ptr node::select(const selector s, bool nested) {
 	auto matched_dom = shared_from_this();
+	auto msize = s.matchers.size();
+	auto i = 0;
 	for(auto& matcher : s) {
-		if(matched_dom->children.empty()) {
-			return matched_dom;
-		}
 		auto selectee_dom = std::move(matched_dom);
 		matched_dom = std::make_shared<node>();
-		for(auto& c : selectee_dom->children) {
-			walk(*c, [&](node& i) {
-				if(matcher(i)) {
-					matched_dom->children.push_back(i.shared_from_this());
+		walk(*selectee_dom, [&](node& n) {
+			if(matcher(n)) {
+				if(i < msize - 1) {
+					matched_dom->children = n.children;
+					return false;
+				} else {
+					matched_dom->children.push_back(n.shared_from_this());
+					return nested;
 				}
-				return true;
-			});
-		}
+			}
+			return true;
+		});
+		i++;
 	}
 	return matched_dom;
 }
@@ -460,7 +464,7 @@ void node::copy(node& n, node* p) {
 	p->children.push_back(new_node);
 }
 
-node_ptr node::append(node_ptr& n) {
+node_ptr node::append(const node_ptr& n) {
 	if(n->inserted) {
 		copy(*n, this);
 	} else {

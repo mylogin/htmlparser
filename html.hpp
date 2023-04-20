@@ -104,7 +104,7 @@ namespace html {
 		std::vector<node_ptr>::iterator end() {
 			return children.end();
 		}
-		node_ptr select(const selector);
+		node_ptr select(const selector, bool nested = true);
 		std::string to_html(char indent = '	', bool child = true) const;
 		std::string to_text(bool raw = false) const;
 		node* get_parent() const {
@@ -115,7 +115,7 @@ namespace html {
 		}
 		std::string get_attr(const std::string&) const;
 		void set_attr(const std::string&, const std::string&);
-		node_ptr append(node_ptr&);
+		node_ptr append(const node_ptr&);
 		void walk(std::function<bool(node&)>);
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
