@@ -291,8 +291,8 @@ void node::walk(node& d, std::function<bool(node&)> handler) {
 
 node_ptr node::select(const selector s, bool nested) {
 	auto matched_dom = shared_from_this();
-	auto msize = s.matchers.size();
-	auto i = 0;
+	size_t msize = s.matchers.size();
+	size_t i = 0;
 	for(auto& matcher : s) {
 		auto selectee_dom = std::move(matched_dom);
 		matched_dom = std::make_shared<node>();
@@ -313,14 +313,14 @@ node_ptr node::select(const selector s, bool nested) {
 	return matched_dom;
 }
 
-void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind, bool& last_is_block, bool& sibling_is_block) const {
+void node::to_html(std::ostream& out, bool child, bool text, int level, int& deep, char ind, bool& last_is_block, bool& sibling_is_block) const {
 	std::streamoff pos = out.tellp();
 	if(type_node == node_t::none) {
 		for(auto& c : children) {
-			c->to_html(out, child, 0, deep, ind, last_is_block, sibling_is_block);
+			c->to_html(out, child, text, 0, deep, ind, last_is_block, sibling_is_block);
 		}
 	} else if(type_node == node_t::text) {
-		if(std::any_of(content.begin(), content.end(), [](char c) {
+		if(text && std::any_of(content.begin(), content.end(), [](char c) {
 			return !IS_SPACE(c);
 		})) {
 			auto str = content;
@@ -358,7 +358,7 @@ void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind
 				bool last_is_block_n = false;
 				bool sibling_is_block_n = false;
 				for(auto& c : children) {
-					c->to_html(out, child, level + 1, deep, ind, last_is_block_n, sibling_is_block_n);
+					c->to_html(out, child, text, level + 1, deep, ind, last_is_block_n, sibling_is_block_n);
 				}
 				if(sibling_is_block_n) {
 					if(deep > 0) {
@@ -382,12 +382,58 @@ void node::to_html(std::ostream& out, bool child, int level, int& deep, char ind
 	}
 }
 
-std::string node::to_html(char ind, bool child) const {
+void node::to_raw_html(std::ostream& out, bool child, bool text) const {
+	if(type_node == node_t::none) {
+		for(auto& c : children) {
+			c->to_raw_html(out, child, text);
+		}
+	} else if(type_node == node_t::text) {
+		if(text && std::any_of(content.begin(), content.end(), [](char c) {
+			return !IS_SPACE(c);
+		})) {
+			auto str = content;
+			if(parent && std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
+				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
+			}
+			out << str;
+		}
+	} else if(type_node == node_t::tag) {
+		out << "<" << tag_name;
+		if(!attributes.empty()) {
+			for(auto& a : attributes) {
+				out << ' ' << a.first << "=\"" << a.second << "\"";
+			}
+		}
+		if(self_closing) {
+			out << " />";
+		} else {
+			out << ">";
+			if(child) {
+				for(auto& c : children) {
+					c->to_raw_html(out, child, text);
+				}
+			}
+			out << "</" << tag_name << ">";
+		}
+	} else if(type_node == node_t::comment) {
+		out << "<!--" << content << "-->";
+	} else if(type_node == node_t::doctype) {
+		out << "<!DOCTYPE " << content << ">";
+	}
+}
+
+std::string node::to_html(char ind, bool child, bool text) const {
 	std::stringstream ret;
 	bool last_is_block_n = false;
 	bool sibling_is_block_n = false;
 	int deep = 0;
-	to_html(ret, child, 0, deep, ind, last_is_block_n, sibling_is_block_n);
+	to_html(ret, child, text, 0, deep, ind, last_is_block_n, sibling_is_block_n);
+	return ret.str();
+}
+
+std::string node::to_raw_html(bool child, bool text) const {
+	std::stringstream ret;
+	to_raw_html(ret, child, text);
 	return ret.str();
 }
 

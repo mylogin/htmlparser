@@ -105,7 +105,8 @@ namespace html {
 			return children.end();
 		}
 		node_ptr select(const selector, bool nested = true);
-		std::string to_html(char indent = '	', bool child = true) const;
+		std::string to_html(char indent = '	', bool child = true, bool text = true) const;
+		std::string to_raw_html(bool child = true, bool text = true) const;
 		std::string to_text(bool raw = false) const;
 		node* get_parent() const {
 			return parent;
@@ -132,7 +133,8 @@ namespace html {
 		int node_count = 0;
 		void copy(node*, node*);
 		void walk(node&, std::function<bool(node&)>);
-		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
+		void to_html(std::ostream&, bool, bool, int, int&, char, bool&, bool&) const;
+		void to_raw_html(std::ostream&, bool, bool) const;
 		void to_text(std::ostream&, bool&) const;
 		friend class selector;
 		friend class parser;
