@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[]) {
 	
-	std::ifstream ifs("test/example.html");
+	std::ifstream ifs("example.html");
 	if(!ifs.is_open()) {
 		std::cout << "specify html file\n";
 		std::cin.get();

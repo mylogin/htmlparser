@@ -10,7 +10,7 @@ struct sel {
 
 int main(int argc, char* argv[]) {
 
-	std::ifstream ifs("test/selectors.html");
+	std::ifstream ifs("selectors.html");
 	if(!ifs.is_open()) {
 		std::cout << "specify html file\n";
 		std::cin.get();
