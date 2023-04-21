@@ -117,6 +117,7 @@ namespace html {
 		void set_attr(const std::string&, const std::string&);
 		node_ptr append(const node_ptr&);
 		void walk(std::function<bool(node&)>);
+		node_ptr copy();
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
 		bool self_closing = false;
@@ -129,8 +130,7 @@ namespace html {
 		std::vector<node_ptr> children;
 		int index = 0;
 		int node_count = 0;
-		bool inserted = false;
-		void copy(node&, node* parent);
+		void copy(node*, node*);
 		void walk(node&, std::function<bool(node&)>);
 		void to_html(std::ostream&, bool, int, int&, char, bool&, bool&) const;
 		void to_text(std::ostream&, bool&) const;
@@ -193,7 +193,7 @@ namespace html {
 		void operator()(node&);
 		void handle_node();
 		int state = STATE_DATA;
-		node* current_ptr;
+		node* current_ptr = nullptr;
 		node_ptr new_node;
 		std::vector<std::pair<selector, std::function<void(node&)>>> callback_node;
 		std::vector<std::function<void(err_t, node&)>> callback_err;

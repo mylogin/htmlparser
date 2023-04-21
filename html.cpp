@@ -445,31 +445,36 @@ void node::set_attr(const std::string& key, const std::string& val) {
 	attributes[key] = val;
 }
 
-void node::copy(node& n, node* p) {
+node_ptr node::copy() {
+	node new_node;
+	copy(this, &new_node);
+	new_node.children[0]->parent = nullptr;
+	return new_node.children[0];
+}
+
+void node::copy(node* n, node* p) {
 	auto new_node = std::make_shared<node>();
 	new_node->parent = p;
-	new_node->type_node = n.type_node;
-	new_node->type_tag = n.type_tag;
-	new_node->self_closing = n.self_closing;
-	new_node->tag_name = n.tag_name;
-	new_node->content = n.content;
-	new_node->attributes = n.attributes;
-	new_node->inserted = true;
+	new_node->type_node = n->type_node;
+	new_node->type_tag = n->type_tag;
+	new_node->self_closing = n->self_closing;
+	new_node->tag_name = n->tag_name;
+	new_node->content = n->content;
+	new_node->attributes = n->attributes;
 	if(new_node->type_node == node_t::tag) {
 		new_node->index = p->node_count++;
 	}
-	for(auto& c : n.children) {
-		copy(*c, new_node.get());
+	for(auto& c : n->children) {
+		copy(c.get(), new_node.get());
 	}
 	p->children.push_back(new_node);
 }
 
 node_ptr node::append(const node_ptr& n) {
-	if(n->inserted) {
-		copy(*n, this);
+	if(n->parent) {
+		copy(n.get(), this);
 	} else {
 		n->parent = this;
-		n->inserted = true;
 		if(n->type_node == node_t::tag) {
 			n->index = this->node_count++;
 		}
@@ -564,7 +569,6 @@ void parser::handle_node() {
 		(*this)(*new_node);
 	}
 	new_node = std::make_shared<node>(current_ptr);
-	new_node->inserted = true;
 	new_node->type_node = node_t::text;
 }
 
@@ -596,7 +600,6 @@ node_ptr html::parser::parse(const std::string& html) {
 	auto _parent = std::make_shared<node>();
 	current_ptr = _parent.get();
 	new_node = std::make_shared<node>(current_ptr);
-	new_node->inserted = true;
 	new_node->type_node = node_t::text;
 	std::string k;
 	do {
