@@ -246,35 +246,17 @@ bool selector::selector_matcher::operator()(const node& d) const {
 	return false;
 }
 
-node::node(node&& d)
-	: tag_name(std::move(d.tag_name))
-	, content(std::move(d.content))
-	, attributes(std::move(d.attributes))
-	, parent(std::move(d.parent))
-	, children(std::move(d.children))
-	, index(d.index)
-	, node_count(d.node_count) {
-	d.tag_name.clear();
-	d.attributes.clear();
-	d.content.clear();
-	d.parent = nullptr;
-	d.children.clear();
-	d.index = 0;
-	d.node_count = 0;
-}
-
-node& node::operator=(node&& d) {
-	attributes = std::move(d.attributes);
-	tag_name = std::move(d.tag_name);
-	content = std::move(d.content);
-	parent = std::move(d.parent);
-	children = std::move(d.children);
-	d.tag_name.clear();
-	d.attributes.clear();
-	d.content.clear();
-	d.parent = nullptr;
-	d.children.clear();
-	return *this;
+node::node(const node& d)
+	: type_node(d.type_node)
+	, type_tag(d.type_tag)
+	, self_closing(d.self_closing)
+	, tag_name(d.tag_name)
+	, content(d.content)
+	, attributes(d.attributes)
+	, bogus_comment(d.bogus_comment) {
+	for(auto& n : d.children) {
+		copy(n.get(), this);
+	}
 }
 
 void node::walk(std::function<bool(node&)> handler) {
@@ -282,32 +264,32 @@ void node::walk(std::function<bool(node&)> handler) {
 }
 
 void node::walk(node& d, std::function<bool(node&)> handler) {
-	if(handler(d)) {
-		for(auto& c : d.children) {
+	for(auto& c : d.children) {
+		if(handler(*c)) {
 			walk(*c, handler);
 		}
 	}
 }
 
-node_ptr node::select(const selector s, bool nested) {
-	auto matched_dom = shared_from_this();
+std::vector<node*> node::select(const selector s, bool nested) {
+	std::vector<node*> matched_dom;
 	size_t msize = s.matchers.size();
+	if(msize) {
+		matched_dom.push_back(this);
+	}
 	size_t i = 0;
 	for(auto& matcher : s) {
 		auto selectee_dom = std::move(matched_dom);
-		matched_dom = std::make_shared<node>();
-		walk(*selectee_dom, [&](node& n) {
-			if(matcher(n)) {
-				if(i < msize - 1) {
-					matched_dom->children = n.children;
-					return false;
-				} else {
-					matched_dom->children.push_back(n.shared_from_this());
-					return nested;
+		matched_dom = std::vector<node*>();
+		for(auto p : selectee_dom) {
+			walk(*p, [&](node& n) {
+				if(matcher(n)) {
+					matched_dom.push_back(&n);
+					return i < msize - 1 ? false : nested;
 				}
-			}
-			return true;
-		});
+				return true;
+			});
+		}
 		i++;
 	}
 	return matched_dom;
@@ -491,15 +473,8 @@ void node::set_attr(const std::string& key, const std::string& val) {
 	attributes[key] = val;
 }
 
-node_ptr node::copy() {
-	node new_node;
-	copy(this, &new_node);
-	new_node.children[0]->parent = nullptr;
-	return new_node.children[0];
-}
-
-void node::copy(node* n, node* p) {
-	auto new_node = std::make_shared<node>();
+void node::copy(const node* n, node* p) {
+	auto new_node = utils::make_unique<node>();
 	new_node->parent = p;
 	new_node->type_node = n->type_node;
 	new_node->type_tag = n->type_tag;
@@ -507,26 +482,19 @@ void node::copy(node* n, node* p) {
 	new_node->tag_name = n->tag_name;
 	new_node->content = n->content;
 	new_node->attributes = n->attributes;
+	new_node->bogus_comment = n->bogus_comment;
 	if(new_node->type_node == node_t::tag) {
 		new_node->index = p->node_count++;
 	}
 	for(auto& c : n->children) {
 		copy(c.get(), new_node.get());
 	}
-	p->children.push_back(new_node);
+	p->children.push_back(std::move(new_node));
 }
 
-node_ptr node::append(const node_ptr& n) {
-	if(n->parent) {
-		copy(n.get(), this);
-	} else {
-		n->parent = this;
-		if(n->type_node == node_t::tag) {
-			n->index = this->node_count++;
-		}
-		children.push_back(n);
-	}
-	return shared_from_this();
+node& node::append(const node& n) {
+	copy(&n, this);
+	return *this;
 }
 
 void parser::operator()(node& nodeptr) {
@@ -566,55 +534,56 @@ void parser::clear_callbacks() {
 }
 
 void parser::handle_node() {
-	if(new_node->type_node == node_t::tag) {
-		if(new_node->type_tag == tag_t::open) {
-			new_node->index = current_ptr->node_count++;
-			current_ptr->children.push_back(new_node);
-			if(!new_node->self_closing) {
-				if(std::find(void_tags.begin(), void_tags.end(), new_node->tag_name) != void_tags.end()) {
-					new_node->self_closing = true;
-				} else if(std::find(rawtext_tags.begin(), rawtext_tags.end(), new_node->tag_name) != rawtext_tags.end()) {
-					current_ptr = new_node.get();
+	node* new_node_ptr = new_node.get();
+	if(new_node_ptr->type_node == node_t::tag) {
+		if(new_node_ptr->type_tag == tag_t::open) {
+			new_node_ptr->index = current_ptr->node_count++;
+			current_ptr->children.push_back(std::move(new_node));
+			if(!new_node_ptr->self_closing) {
+				if(std::find(void_tags.begin(), void_tags.end(), new_node_ptr->tag_name) != void_tags.end()) {
+					new_node_ptr->self_closing = true;
+				} else if(std::find(rawtext_tags.begin(), rawtext_tags.end(), new_node_ptr->tag_name) != rawtext_tags.end()) {
+					current_ptr = new_node_ptr;
 					state = STATE_RAWTEXT;
 				} else {
-					current_ptr = new_node.get();
+					current_ptr = new_node_ptr;
 				}
 			}
-			(*this)(*new_node);
-		} else if(new_node->type_tag == tag_t::close) {
+			(*this)(*new_node_ptr);
+		} else if(new_node_ptr->type_tag == tag_t::close) {
 			auto _current_ptr = current_ptr;
 			std::vector<node*> not_closed;
-			while(_current_ptr->parent && _current_ptr->tag_name != new_node->tag_name) {
+			while(_current_ptr->parent && _current_ptr->tag_name != new_node_ptr->tag_name) {
 				not_closed.push_back(_current_ptr);
 				_current_ptr = _current_ptr->parent;
 			}
-			if(_current_ptr->parent && _current_ptr->tag_name == new_node->tag_name) {
+			if(_current_ptr->parent && _current_ptr->tag_name == new_node_ptr->tag_name) {
 				for(auto& c : callback_err) {
 					for(auto n : not_closed) {
 						c(err_t::tag_not_closed, *n);
 					}
 				}
-				if(!new_node->content.empty()) {
-					auto text_node = std::make_shared<node>(current_ptr);
+				if(!new_node_ptr->content.empty()) {
+					auto text_node = utils::make_unique<node>(current_ptr);
 					text_node->type_node = node_t::text;
-					text_node->content = std::move(new_node->content);
-					new_node->content.clear();
-					current_ptr->children.push_back(text_node);
+					text_node->content = std::move(new_node_ptr->content);
+					new_node_ptr->content.clear();
+					current_ptr->children.push_back(std::move(text_node));
 				}
 				current_ptr = _current_ptr->parent;
-				(*this)(*new_node);
+				(*this)(*new_node_ptr);
 			}
 		}
-	} else if(new_node->type_node == node_t::text) {
-		if(!new_node->content.empty()) {
-			current_ptr->children.push_back(new_node);
-			(*this)(*new_node);
+	} else if(new_node_ptr->type_node == node_t::text) {
+		if(!new_node_ptr->content.empty()) {
+			current_ptr->children.push_back(std::move(new_node));
+			(*this)(*new_node_ptr);
 		}
 	} else {
-		current_ptr->children.push_back(new_node);
-		(*this)(*new_node);
+		current_ptr->children.push_back(std::move(new_node));
+		(*this)(*new_node_ptr);
 	}
-	new_node = std::make_shared<node>(current_ptr);
+	new_node = utils::make_unique<node>(current_ptr);
 	new_node->type_node = node_t::text;
 }
 
@@ -643,9 +612,9 @@ node_ptr html::parser::parse(const std::string& html) {
 		return true;
 	};
 	state = STATE_DATA;
-	auto _parent = std::make_shared<node>();
+	auto _parent = utils::make_unique<node>();
 	current_ptr = _parent.get();
-	new_node = std::make_shared<node>(current_ptr);
+	new_node = utils::make_unique<node>(current_ptr);
 	new_node->type_node = node_t::text;
 	std::string k;
 	do {
@@ -1011,19 +980,19 @@ node_ptr html::parser::parse(const std::string& html) {
 	return _parent;
 }
 
-std::shared_ptr<html::node> utils::make_node(node_t type, const std::string& str, const std::map<std::string, std::string>& attributes) {
-	auto node = std::make_shared<html::node>();
-	node->type_node = type;
+node utils::make_node(node_t type, const std::string& str, const std::map<std::string, std::string>& attributes) {
+	html::node node;
+	node.type_node = type;
 	if(type == node_t::tag) {
-		node->tag_name = str;
+		node.tag_name = str;
 		if(std::find(void_tags.begin(), void_tags.end(), str) != void_tags.end()) {
-			node->self_closing = true;
+			node.self_closing = true;
 		}
 		if(!attributes.empty()) {
-			node->attributes = attributes;
+			node.attributes = attributes;
 		}
 	} else {
-		node->content = str;
+		node.content = str;
 	}
 	return node;
 }

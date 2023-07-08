@@ -61,7 +61,7 @@ namespace html {
 	class parser;
 	class node;
 
-	using node_ptr = std::shared_ptr<node>;
+	using node_ptr = std::unique_ptr<node>;
 
 	enum class node_t {
 		none,
@@ -81,16 +81,27 @@ namespace html {
 		tag_not_closed
 	};
 
-	class node : public std::enable_shared_from_this<node> {
+	class node {
 	public:
 		node(node* parent = nullptr) : parent(parent) {}
-		node(node&&);
-		node& operator=(node&&);
-		node_ptr at(size_t i) const {
+		node(const node&);
+		node(node&& d)
+		: type_node(std::move(d.type_node))
+		, type_tag(std::move(d.type_tag))
+		, self_closing(std::move(d.self_closing))
+		, tag_name(std::move(d.tag_name))
+		, content(std::move(d.content))
+		, attributes(std::move(d.attributes))
+		, parent(nullptr)
+		, bogus_comment(std::move(d.bogus_comment))
+		, children(std::move(d.children))
+		, index(0)
+		, node_count(std::move(d.node_count)) {}
+		node* at(size_t i) const {
 			if(i < children.size()) {
-				return children[i];
+				return children[i].get();
 			}
-			return std::make_shared<node>();
+			return nullptr;
 		}
 		size_t size() const {
 			return children.size();
@@ -104,21 +115,17 @@ namespace html {
 		std::vector<node_ptr>::iterator end() {
 			return children.end();
 		}
-		node_ptr select(const selector, bool nested = true);
+		std::vector<node*> select(const selector, bool nested = true);
 		std::string to_html(char indent = '	', bool child = true, bool text = true) const;
 		std::string to_raw_html(bool child = true, bool text = true) const;
 		std::string to_text(bool raw = false) const;
 		node* get_parent() const {
 			return parent;
 		}
-		std::vector<node_ptr> get_children() const {
-			return children;
-		}
 		std::string get_attr(const std::string&) const;
 		void set_attr(const std::string&, const std::string&);
-		node_ptr append(const node_ptr&);
+		node& append(const node&);
 		void walk(std::function<bool(node&)>);
-		node_ptr copy();
 		node_t type_node = node_t::none;
 		tag_t type_tag = tag_t::none;
 		bool self_closing = false;
@@ -131,14 +138,13 @@ namespace html {
 		std::vector<node_ptr> children;
 		int index = 0;
 		int node_count = 0;
-		void copy(node*, node*);
+		void copy(const node*, node*);
 		void walk(node&, std::function<bool(node&)>);
 		void to_html(std::ostream&, bool, bool, int, int&, char, bool&, bool&) const;
 		void to_raw_html(std::ostream&, bool, bool) const;
 		void to_text(std::ostream&, bool&) const;
 		friend class selector;
 		friend class parser;
-		friend class utils;
 	};
 
 	class selector {
@@ -149,8 +155,6 @@ namespace html {
 		operator bool() const {
 			return !matchers.empty();
 		}
-		friend class node;
-		friend class parser;
 	private:
 		struct condition {
 			condition() = default;
@@ -182,6 +186,8 @@ namespace html {
 			return matchers.end();
 		}
 		std::vector<selector_matcher> matchers;
+		friend class node;
+		friend class parser;
 	};
 
 	class parser {
@@ -201,10 +207,25 @@ namespace html {
 		std::vector<std::function<void(err_t, node&)>> callback_err;
 	};
 
-	class utils {
-	public:
-		static std::shared_ptr<html::node> make_node(node_t, const std::string&, const std::map<std::string, std::string>& attributes = {});
-	};
+	namespace utils {
+
+		node make_node(node_t, const std::string&, const std::map<std::string, std::string>& attributes = {});
+
+		template <class T, class... Args>
+		typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
+			make_unique(Args &&...args) {
+			return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+		}
+
+		template <class T>
+		typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
+			make_unique(std::size_t n) {
+			typedef typename std::remove_extent<T>::type RT;
+			return std::unique_ptr<T>(new RT[n]);
+
+		}
+
+	}
 
 }
 

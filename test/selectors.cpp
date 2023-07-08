@@ -1,5 +1,4 @@
 #include "html.hpp"
-#include <fstream>
 #include <iostream>
 
 struct sel {
@@ -10,14 +9,9 @@ struct sel {
 
 int main(int argc, char* argv[]) {
 
-	std::ifstream ifs("selectors.html");
-	if(!ifs.is_open()) {
-		std::cout << "specify html file\n";
-		std::cin.get();
-		return 0;
-	}
-	std::string page((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-	ifs.close();
+	std::string page = R"(<p attr="attr_val1"><i>i</i></p>)"
+		R"(<h1 id="id1" attr="attr_val2">h1</h1>)"
+		R"(<div id="id2" class="class_name" attr2="value">div</div>)";
 
 	std::vector<sel> selectors = {
 		{"tag name", "p", true},
@@ -41,10 +35,17 @@ int main(int argc, char* argv[]) {
 
 	html::parser p;
 	
-	std::cout << "Using 'select' method:\n\n";
+	std::cout << "\nUsing 'select' method:\n\n";
 	html::node_ptr n = p.parse(page);
 	for(auto& s : selectors) {
-		std::cout << s.name << " (" << s.selector << "):\n" << n->select(s.selector)->to_html() << "\n\n";
+		std::vector<html::node*> sel = n->select(s.selector);
+		if(!sel.empty()) {
+			std::cout << s.name << " (" << s.selector << "):\n";
+			for(auto n : sel) {
+				std::cout << n->to_html() << std::endl;
+			}
+			std::cout << std::endl;
+		}
 		if(!s.callback) {
 			continue;
 		}
