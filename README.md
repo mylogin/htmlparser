@@ -181,6 +181,6 @@ std::cout << div.to_html() << std::endl;
 | [attr*='/path/'] | attribute contains "/path/" | √ | √ |
 | div#id1.class1[attr='val'] | element that matches all of these selectors | √ | √ |
 | p,div | element that matches any of these selectors | √ | √ |
-| div p | all <p> elements inside <div> elements | √ | - |
-| div>p | all <p> elements where the parent is a <div> element | √ | - |
+| div p | all `<p>` elements inside `<div>` elements | √ | - |
+| div>p | all `<p>` elements where the parent is a `<div>` element | √ | - |
 | div div>p>i | combination of nested selectors  | √ | - |
