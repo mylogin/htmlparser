@@ -54,6 +54,13 @@ selector::selector(std::string s) {
 				if(c == 0 || c == ' ') {
 					save_matcher();
 					state = SEL_STATE_TAG;
+				} else if(c == '>') {
+					if(!matcher.dc_second) {
+						matcher.dc_first = true;
+					}
+					save_matcher();
+					matcher.dc_second = true;
+					state = SEL_STATE_TAG;
 				} else if(c == '[') {
 					state = SEL_STATE_ATTR;
 				} else if(c == ':') {
@@ -68,7 +75,7 @@ selector::selector(std::string s) {
 				}
 			break;
 			case SEL_STATE_TAG:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
+				if(IS_STATE_ROUTE(c)) {
 					save_cond(match_condition.tag_name);
 					reconsume = true;
 					state = SEL_STATE_ROUTE;
@@ -79,7 +86,7 @@ selector::selector(std::string s) {
 				}
 			break;
 			case SEL_STATE_CLASS:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
+				if(IS_STATE_ROUTE(c)) {
 					save_cond(match_condition.class_name);
 					reconsume = true;
 					state = SEL_STATE_ROUTE;
@@ -88,7 +95,7 @@ selector::selector(std::string s) {
 				}
 			break;
 			case SEL_STATE_ID:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
+				if(IS_STATE_ROUTE(c)) {
 					save_cond(match_condition.id);
 					reconsume = true;
 					state = SEL_STATE_ROUTE;
@@ -97,7 +104,7 @@ selector::selector(std::string s) {
 				}
 			break;
 			case SEL_STATE_OPERATOR:
-				if(c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',') {
+				if(IS_STATE_ROUTE(c)) {
 					save_cond(match_condition.attr_operator);
 					reconsume = true;
 					state = SEL_STATE_ROUTE;
@@ -168,8 +175,12 @@ selector::condition::condition(condition&& c)
 
 selector::selector_matcher::selector_matcher(selector_matcher&& m)
 	: all_match(m.all_match)
+	, dc_first(m.dc_first)
+	, dc_second(m.dc_second)
 	, conditions(std::move(m.conditions)) {
 	m.all_match = false;
+	m.dc_first = false;
+	m.dc_second = false;
 	m.conditions.clear();
 }
 
@@ -280,13 +291,27 @@ std::vector<node*> node::select(const selector s, bool nested) {
 	size_t i = 0;
 	for(auto& matcher : s) {
 		auto selectee_dom = std::move(matched_dom);
-		matched_dom = std::vector<node*>();
 		for(auto p : selectee_dom) {
 			walk(*p, [&](node& n) {
 				if(matcher(n)) {
 					matched_dom.push_back(&n);
-					return i < msize - 1 ? false : nested;
+					if(matcher.dc_second) {
+						// div>[div]>div, div>div>[div] - not scan child, we need only direct child
+						return false;
+					} else if(matcher.dc_first) {
+						// [div]>div>div - scan all child, since elements can be at any level
+						return true;
+					} else if(i < msize - 1) {
+						// [div] div div, div [div] div - not scan child, the topmost parent will suffice
+						return false;
+					} else {
+						// div div [div] - last matcher, scan based on attribute `nested`
+						return nested;
+					}
+				} else if(matcher.dc_second) {
+					return false;
 				}
+				// if not match and not direct child, scan all child
 				return true;
 			});
 		}

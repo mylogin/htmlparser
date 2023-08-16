@@ -54,6 +54,7 @@
 #define IS_ALPHA(c) (IS_UPPERCASE_ALPHA(c) || IS_LOWERCASE_ALPHA(c))
 #define IS_DIGIT(c) ('0' <= c && c <= '9')
 #define IS_SPACE(c) (c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20 || c == 0x0D)
+#define IS_STATE_ROUTE(c) (c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',' || c == '>')
 
 namespace html {
 
@@ -174,6 +175,8 @@ namespace html {
 			selector_matcher(const selector_matcher&) = default;
 			selector_matcher(selector_matcher&&);
 			bool operator()(const node&) const;
+			bool dc_first = false;
+			bool dc_second = false;
 		private:
 			bool all_match = false;
 			std::vector<std::vector<condition>> conditions;
