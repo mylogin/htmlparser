@@ -25,6 +25,6 @@ endif()
 add_executable("${PROJECT_NAME}_test_sel" selectors.cpp)
 # GoogleTest requires at least C++14
 target_compile_features("${PROJECT_NAME}_test_sel" PUBLIC cxx_std_14)
-target_include_directories("${PROJECT_NAME}_test_sel" PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories("${PROJECT_NAME}_test_sel" PRIVATE ..)
 target_link_libraries("${PROJECT_NAME}_test_sel" PRIVATE ${PROJECT_NAME} GTest::gtest_main)
 gtest_discover_tests("${PROJECT_NAME}_test_sel")

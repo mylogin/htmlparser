@@ -86,7 +86,7 @@ namespace html {
 	public:
 		node(node* parent = nullptr) : parent(parent) {}
 		node(const node&);
-		node(node&& d)
+		node(node&& d) noexcept
 		: type_node(std::move(d.type_node))
 		, type_tag(std::move(d.type_tag))
 		, self_closing(std::move(d.self_closing))
@@ -123,8 +123,11 @@ namespace html {
 		node* get_parent() const {
 			return parent;
 		}
+		bool has_attr(const std::string&) const;
 		std::string get_attr(const std::string&) const;
 		void set_attr(const std::string&, const std::string&);
+		void set_attr(const std::map<std::string, std::string>& attributes);
+		void del_attr(const std::string&);
 		node& append(const node&);
 		void walk(std::function<bool(node&)>);
 		node_t type_node = node_t::none;
@@ -132,11 +135,11 @@ namespace html {
 		bool self_closing = false;
 		std::string tag_name;
 		std::string content;
-		std::map<std::string, std::string> attributes;
 	private:
 		node* parent = nullptr;
 		bool bogus_comment = false;
 		std::vector<node_ptr> children;
+		std::map<std::string, std::string> attributes;
 		int index = 0;
 		int node_count = 0;
 		void copy(const node*, node*);
@@ -160,7 +163,7 @@ namespace html {
 		struct condition {
 			condition() = default;
 			condition(const condition& d) = default;
-			condition(condition&&);
+			condition(condition&&) noexcept;
 			std::string tag_name;
 			std::string id;
 			std::string class_name;
@@ -173,7 +176,7 @@ namespace html {
 		struct selector_matcher {
 			selector_matcher() = default;
 			selector_matcher(const selector_matcher&) = default;
-			selector_matcher(selector_matcher&&);
+			selector_matcher(selector_matcher&&) noexcept;
 			bool operator()(const node&) const;
 			bool dc_first = false;
 			bool dc_second = false;

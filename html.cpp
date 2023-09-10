@@ -156,7 +156,7 @@ selector::selector(std::string s) {
 	} while(c || reconsume);
 }
 
-selector::condition::condition(condition&& c)
+selector::condition::condition(condition&& c) noexcept
 	: tag_name(std::move(c.tag_name))
 	, id(std::move(c.id))
 	, class_name(std::move(c.class_name))
@@ -173,7 +173,7 @@ selector::condition::condition(condition&& c)
 	c.attr_operator.clear();
 }
 
-selector::selector_matcher::selector_matcher(selector_matcher&& m)
+selector::selector_matcher::selector_matcher(selector_matcher&& m) noexcept
 	: all_match(m.all_match)
 	, dc_first(m.dc_first)
 	, dc_second(m.dc_second)
@@ -486,6 +486,10 @@ std::string node::to_text(bool raw) const {
 	return str;
 }
 
+bool node::has_attr(const std::string& key) const {
+	return attributes.count(key);
+}
+
 std::string node::get_attr(const std::string& attr) const {
 	auto it = attributes.find(attr);
 	if(it == attributes.end()) {
@@ -496,6 +500,14 @@ std::string node::get_attr(const std::string& attr) const {
 
 void node::set_attr(const std::string& key, const std::string& val) {
 	attributes[key] = val;
+}
+
+void node::set_attr(const std::map<std::string, std::string>& attr) {
+	attributes = attr;
+}
+
+void node::del_attr(const std::string& key) {
+	attributes.erase(key);
 }
 
 void node::copy(const node* n, node* p) {
@@ -1014,7 +1026,7 @@ node utils::make_node(node_t type, const std::string& str, const std::map<std::s
 			node.self_closing = true;
 		}
 		if(!attributes.empty()) {
-			node.attributes = attributes;
+			node.set_attr(attributes);
 		}
 	} else {
 		node.content = str;
