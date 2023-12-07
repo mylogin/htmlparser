@@ -167,16 +167,16 @@ selector::condition::condition(condition&& c) noexcept
 	c.tag_name.clear();
 	c.id.clear();
 	c.class_name.clear();
-	c.index.clear();
+	c.index = "0";
 	c.attr.clear();
 	c.attr_value.clear();
 	c.attr_operator.clear();
 }
 
 selector::selector_matcher::selector_matcher(selector_matcher&& m) noexcept
-	: all_match(m.all_match)
-	, dc_first(m.dc_first)
+	: dc_first(m.dc_first)
 	, dc_second(m.dc_second)
+	, all_match(m.all_match)
 	, conditions(std::move(m.conditions)) {
 	m.all_match = false;
 	m.dc_first = false;
@@ -185,6 +185,7 @@ selector::selector_matcher::selector_matcher(selector_matcher&& m) noexcept
 }
 
 bool selector::condition::operator()(const node& d) const {
+	const int i = std::stoi(index);
 	if(!tag_name.empty()) {
 		return d.tag_name == tag_name;
 	}
@@ -207,13 +208,13 @@ bool selector::condition::operator()(const node& d) const {
 		return d.index == d.parent->node_count - 1;
 	}
 	if(attr_operator == "eq") {
-		return d.index == std::stoi(index);
+		return d.index == i;
 	}
 	if(attr_operator == "gt") {
-		return d.index > std::stoi(index);
+		return d.index > i;
 	}
 	if(attr_operator == "lt") {
-		return d.index < std::stoi(index);
+		return d.index < i;
 	}
 	if(!attr.empty()) {
 		auto it = d.attributes.find(attr);
@@ -263,8 +264,8 @@ node::node(const node& d)
 	, self_closing(d.self_closing)
 	, tag_name(d.tag_name)
 	, content(d.content)
-	, attributes(d.attributes)
-	, bogus_comment(d.bogus_comment) {
+	, bogus_comment(d.bogus_comment)
+	, attributes(d.attributes) {
 	for(auto& n : d.children) {
 		copy(n.get(), this);
 	}

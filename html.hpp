@@ -87,17 +87,17 @@ namespace html {
 		node(node* parent = nullptr) : parent(parent) {}
 		node(const node&);
 		node(node&& d) noexcept
-		: type_node(std::move(d.type_node))
-		, type_tag(std::move(d.type_tag))
-		, self_closing(std::move(d.self_closing))
+		: type_node(d.type_node)
+		, type_tag(d.type_tag)
+		, self_closing(d.self_closing)
 		, tag_name(std::move(d.tag_name))
 		, content(std::move(d.content))
-		, attributes(std::move(d.attributes))
 		, parent(nullptr)
-		, bogus_comment(std::move(d.bogus_comment))
+		, bogus_comment(d.bogus_comment)
 		, children(std::move(d.children))
+		, attributes(std::move(d.attributes))
 		, index(0)
-		, node_count(std::move(d.node_count)) {}
+		, node_count(d.node_count) {}
 		node* at(size_t i) const {
 			if(i < children.size()) {
 				return children[i].get();
