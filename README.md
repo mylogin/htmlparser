@@ -168,6 +168,7 @@ std::cout << div.to_html() << std::endl;
 | div | tag name | √ | √ |
 | #id1 | id="id1" | √ | √ |
 | .class1 | class="class1" | √ | √ |
+| .class1.class2 | class="class1 class2" | √ | √ |
 | :first | first element | √ | √ |
 | :last | last element | √ | - |
 | :eq(3) | element index = 3 (starts from 0) | √ | √ |

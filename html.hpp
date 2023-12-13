@@ -231,6 +231,8 @@ namespace html {
 
 		}
 
+		bool contains_word(const std::string&, const std::string&);
+
 	}
 
 }

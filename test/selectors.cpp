@@ -13,7 +13,7 @@ const char* check = R"html(
 			<h1 id="h1_id" attr2="value" class="h1_class">h1</h1>
 			<div id="div_id"></div>
 			<p>
-				<i attr="attr_val1" class="class_name">italic</i>
+				<i attr="attr_val1" class="class_alt_name class_name">italic</i>
 				<b attr="attr_val2" class="class_name">bold</b>
 			</p>
 			<!--comment-->
@@ -81,6 +81,12 @@ TEST_F(Selectors, Class) {
 	ASSERT_EQ(sel.size(), 2);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
 	EXPECT_STREQ(sel[1]->tag_name.c_str(), "b");
+}
+
+TEST_F(Selectors, MultipleClass) {
+	find(".class_name.class_alt_name");
+	ASSERT_EQ(sel.size(), 1);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
 }
 
 TEST_F(Selectors, First) {
@@ -253,6 +259,12 @@ TEST_F(SelectorsCb, Class) {
 	ASSERT_EQ(sel.size(), 2);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
 	EXPECT_STREQ(sel[1]->tag_name.c_str(), "b");
+}
+
+TEST_F(SelectorsCb, MultipleClass) {
+	find(".class_name.class_alt_name");
+	ASSERT_EQ(sel.size(), 1);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
 }
 
 TEST_F(SelectorsCb, First) {

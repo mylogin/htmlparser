@@ -198,7 +198,7 @@ bool selector::condition::operator()(const node& d) const {
 	if(!class_name.empty()) {
 		auto it = d.attributes.find("class");
 		if(it != d.attributes.end()) {
-			return it->second == class_name;
+			return utils::contains_word(it->second, class_name);
 		}
 	}
 	if(attr_operator == "first") {
@@ -1033,6 +1033,16 @@ node utils::make_node(node_t type, const std::string& str, const std::map<std::s
 		node.content = str;
 	}
 	return node;
+}
+
+bool utils::contains_word(const std::string& str, const std::string& word) {
+	auto pos = str.find(word);
+	if(pos == std::string::npos) {
+		return false;
+	}
+	bool start = pos < 1 || IS_SPACE(str[pos - 1]);
+	bool end = pos + word.size() >= str.size() || IS_SPACE(str[pos + word.size()]);
+	return start && end;
 }
 
 }
