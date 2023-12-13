@@ -181,7 +181,7 @@ std::cout << div.to_html() << std::endl;
 | [attr$='.jpeg'] | attribute ends with ".jpeg" | √ | √ |
 | [attr*='/path/'] | attribute contains "/path/" | √ | √ |
 | [attr~='flower'] | attribute contains word "flower" | √ | √ |
-| [attr|='en'] | attribute equal to "en" or starting with "en-" | √ | √ |
+| [attr&vert;='en'] | attribute equal to "en" or starting with "en-" | √ | √ |
 | div#id1.class1[attr='val'] | element that matches all of these selectors | √ | √ |
 | p,div | element that matches any of these selectors | √ | √ |
 | div p | all `<p>` elements inside `<div>` elements | √ | - |
