@@ -13,8 +13,8 @@ const char* check = R"html(
 			<h1 id="h1_id" attr2="value" class="h1_class">h1</h1>
 			<div id="div_id"></div>
 			<p>
-				<i attr="attr_val1" class="class_alt_name class_name">italic</i>
-				<b attr="attr_val2" class="class_name">bold</b>
+				<i attr="attr-val1" class="class_alt_name class_name">italic</i>
+				<b attr="attr-val2" class="class_name">bold</b>
 			</p>
 			<!--comment-->
 		</body>
@@ -143,13 +143,13 @@ TEST_F(Selectors, AttrExist) {
 }
 
 TEST_F(Selectors, AttrEqual) {
-	find("[attr='attr_val2']");
+	find("[attr='attr-val2']");
 	ASSERT_EQ(sel.size(), 1);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "b");
 }
 
 TEST_F(Selectors, AttrNotEqual) {
-	find("[attr!='attr_val2']");
+	find("[attr!='attr-val2']");
 	EXPECT_EQ(sel.size(), 10);
 }
 
@@ -170,6 +170,21 @@ TEST_F(Selectors, AttrContains) {
 	find("[attr2*='alu']");
 	ASSERT_EQ(sel.size(), 1);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "h1");
+}
+
+TEST_F(Selectors, AttrWord) {
+	find("[class~='class_name']");
+	ASSERT_EQ(sel.size(), 2);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
+	EXPECT_STREQ(sel[1]->tag_name.c_str(), "b");
+}
+
+TEST_F(Selectors, AttrStartOrHyphen) {
+	find("[attr|='attr'],[attr2|='value']");
+	ASSERT_EQ(sel.size(), 3);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "h1");
+	EXPECT_STREQ(sel[1]->tag_name.c_str(), "i");
+	EXPECT_STREQ(sel[2]->tag_name.c_str(), "b");
 }
 
 TEST_F(Selectors, AnyOf) {
@@ -311,13 +326,13 @@ TEST_F(SelectorsCb, AttrExist) {
 }
 
 TEST_F(SelectorsCb, AttrEqual) {
-	find("[attr='attr_val2']");
+	find("[attr='attr-val2']");
 	ASSERT_EQ(sel.size(), 1);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "b");
 }
 
 TEST_F(SelectorsCb, AttrNotEqual) {
-	find("[attr!='attr_val2']");
+	find("[attr!='attr-val2']");
 	EXPECT_EQ(sel.size(), 10);
 }
 
@@ -338,6 +353,21 @@ TEST_F(SelectorsCb, AttrContains) {
 	find("[attr2*='alu']");
 	ASSERT_EQ(sel.size(), 1);
 	EXPECT_STREQ(sel[0]->tag_name.c_str(), "h1");
+}
+
+TEST_F(SelectorsCb, AttrWord) {
+	find("[class~='class_name']");
+	ASSERT_EQ(sel.size(), 2);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "i");
+	EXPECT_STREQ(sel[1]->tag_name.c_str(), "b");
+}
+
+TEST_F(SelectorsCb, AttrStartOrHyphen) {
+	find("[attr|='attr'],[attr2|='value']");
+	ASSERT_EQ(sel.size(), 3);
+	EXPECT_STREQ(sel[0]->tag_name.c_str(), "h1");
+	EXPECT_STREQ(sel[1]->tag_name.c_str(), "i");
+	EXPECT_STREQ(sel[2]->tag_name.c_str(), "b");
 }
 
 TEST_F(SelectorsCb, AnyOf) {

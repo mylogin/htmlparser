@@ -128,7 +128,7 @@ selector::selector(std::string s) {
 				if(c == ']') {
 					save_cond(match_condition.attr);
 					state = SEL_STATE_ROUTE;
-				} else if(c == '=' || c == '*' || c == '^' || c == '$' || c == '!') {
+				} else if(c == '=' || c == '*' || c == '^' || c == '$' || c == '!' || c == '~' || c == '|') {
 					reconsume = true;
 					state = SEL_STATE_ATTR_OPERATOR;
 				} else if(IS_UPPERCASE_ALPHA(c)) {
@@ -231,6 +231,11 @@ bool selector::condition::operator()(const node& d) const {
 			return it->second != attr_value;
 		} else if(attr_operator == "*=") {
 			return it->second.find(attr_value) != std::string::npos;
+		} else if(attr_operator == "~=") {
+			return utils::contains_word(it->second, attr_value);
+		} else if(attr_operator == "|=") {
+			return it->second.find(attr_value) == 0 && 
+				(attr_value.size() == it->second.size() || it->second[attr_value.size()] == '-');
 		}
 		return true;
 	}
