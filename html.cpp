@@ -2,15 +2,15 @@
 
 namespace html {
 
-std::vector<std::string> inline_tags = {"b", "big", "i", "small", "tt",
+std::unordered_set<std::string> inline_tags = {"b", "big", "i", "small", "tt",
 	"abbr", "acronym", "cite", "code", "dfn", "em", "kbd", "strong", "samp",
 	"time", "var", "a", "bdo", "br", "img", "map", "object", "q",
 	"span", "sub", "sup", "button", "input", "label", "select", "textarea"};
 
-std::vector<std::string> void_tags = {"area", "base", "br", "col", "embed",
+std::unordered_set<std::string> void_tags = {"area", "base", "br", "col", "embed",
 	"hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
 
-std::vector<std::string> rawtext_tags = {"title", "textarea", "style", "script",
+std::unordered_set<std::string> rawtext_tags = {"title", "textarea", "style", "script",
 	"noscript", "plaintext", "iframe", "xmp", "noembed", "noframes"};
 
 selector::selector(std::string s) {
@@ -337,7 +337,7 @@ void node::to_html(std::ostream& out, bool child, bool text, int level, int& dee
 			return !IS_SPACE(c);
 		})) {
 			auto str = content;
-			if(parent && std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
+			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
 				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
 			}
 			if(last_is_block) {
@@ -348,7 +348,7 @@ void node::to_html(std::ostream& out, bool child, bool text, int level, int& dee
 		}
 	} else if(type_node == node_t::tag) {
 		bool old_is_block = last_is_block;
-		last_is_block = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
+		last_is_block = inline_tags.find(tag_name) == inline_tags.end();
 		if(pos && (old_is_block || last_is_block)) {
 			out << '\n' << std::string(deep, ind);
 			if(level && last_is_block && !sibling_is_block) {
@@ -405,7 +405,7 @@ void node::to_raw_html(std::ostream& out, bool child, bool text) const {
 			return !IS_SPACE(c);
 		})) {
 			auto str = content;
-			if(parent && std::find(rawtext_tags.begin(), rawtext_tags.end(), parent->tag_name) == rawtext_tags.end()) {
+			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
 				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
 			}
 			out << str;
@@ -468,7 +468,7 @@ void node::to_text(std::ostream& out, bool& is_block) const {
 		if(tag_name == "br") {
 			out << '\n';
 		}
-		bool is_block_n = std::find(inline_tags.begin(), inline_tags.end(), tag_name) == inline_tags.end();
+		bool is_block_n = inline_tags.find(tag_name) == inline_tags.end();
 		if(is_block_n) {
 			is_block = true;
 		}
@@ -583,9 +583,9 @@ void parser::handle_node() {
 			new_node_ptr->index = current_ptr->node_count++;
 			current_ptr->children.push_back(std::move(new_node));
 			if(!new_node_ptr->self_closing) {
-				if(std::find(void_tags.begin(), void_tags.end(), new_node_ptr->tag_name) != void_tags.end()) {
+				if(void_tags.find(new_node_ptr->tag_name) != void_tags.end()) {
 					new_node_ptr->self_closing = true;
-				} else if(std::find(rawtext_tags.begin(), rawtext_tags.end(), new_node_ptr->tag_name) != rawtext_tags.end()) {
+				} else if(rawtext_tags.find(new_node_ptr->tag_name) != rawtext_tags.end()) {
 					current_ptr = new_node_ptr;
 					state = STATE_RAWTEXT;
 				} else {
@@ -1028,7 +1028,7 @@ node utils::make_node(node_t type, const std::string& str, const std::map<std::s
 	node.type_node = type;
 	if(type == node_t::tag) {
 		node.tag_name = str;
-		if(std::find(void_tags.begin(), void_tags.end(), str) != void_tags.end()) {
+		if(void_tags.find(str) != void_tags.end()) {
 			node.self_closing = true;
 		}
 		if(!attributes.empty()) {
