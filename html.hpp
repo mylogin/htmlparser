@@ -233,6 +233,9 @@ namespace html {
 		}
 
 		bool contains_word(const std::string&, const std::string&);
+		
+		template<class It>
+		bool ilook_ahead(It&, It, const std::string&);
 
 	}
 

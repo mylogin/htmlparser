@@ -16,7 +16,7 @@ std::unordered_set<std::string> rawtext_tags = {"title", "textarea", "style", "s
 selector::selector(std::string s) {
 	selector_matcher matcher;
 	condition match_condition;
-	char c;
+	char c = 0;
 	bool reconsume = false;
 	int state = SEL_STATE_TAG;
 	if(s == "*") {
@@ -25,12 +25,6 @@ selector::selector(std::string s) {
 		return;
 	}
 	auto it = s.begin();
-	auto getc = [&]() -> char {
-		if(it != s.end()) {
-			return *it++;
-		}
-		return 0;
-	};
 	auto save_matcher = [&]() {
 		if(!matcher.conditions.empty()) {
 			matchers.push_back(std::move(matcher));
@@ -46,7 +40,7 @@ selector::selector(std::string s) {
 	};
 	do {
 		if(!reconsume) {
-			c = getc();
+			c = it == s.end() ? 0 : *it++;
 		}
 		reconsume = false;
 		switch(state) {
@@ -631,43 +625,17 @@ void parser::handle_node() {
 }
 
 node_ptr html::parser::parse(const std::string& html) {
-	bool eof = false;
-	char c;
+	char c = 0;
 	bool reconsume = false;
 	auto it = html.begin();
-	auto getc = [&]() -> char {
-		if(it != html.end()) {
-			return *it++;
-		}
-		eof = true;
-		return 0;
-	};
-	auto get_string = [&](std::string str) {
-		for(std::string::size_type i = 0; i < str.size(); i++) {
-			if(i) {
-				c = getc();
-			}
-			if(eof || str[i] != c) {
-				it -= i;
-				return false;
-			}
-		}
-		return true;
-	};
 	state = STATE_DATA;
 	auto _parent = utils::make_unique<node>();
 	current_ptr = _parent.get();
 	new_node = utils::make_unique<node>(current_ptr);
 	new_node->type_node = node_t::text;
 	std::string k;
-	do {
-		if(!reconsume) {
-			c = getc();
-		}
-		reconsume = false;
-		if(eof) {
-			break;
-		}
+	while(it != html.end()) {
+		c = *it;
 		switch(state) {
 			case STATE_DATA: // 0
 				if(c == '<') {
@@ -924,14 +892,16 @@ node_ptr html::parser::parse(const std::string& html) {
 				}
 			break;
 			case STATE_MARKUP_DEC_OPEN_STATE: // 42
-				if(get_string("--")) {
+				if(utils::ilook_ahead(it, html.end(), "--")) {
 					state = STATE_COMMENT_START;
 					handle_node();
 					new_node->type_node = node_t::comment;
-				} else if(get_string("DOCTYPE")) {
+					reconsume = true;
+				} else if(utils::ilook_ahead(it, html.end(), "DOCTYPE")) {
 					state = STATE_BEFORE_DOCTYPE_NAME;
 					handle_node();
 					new_node->type_node = node_t::doctype;
+					reconsume = true;
 				} else {
 					state = STATE_BOGUS_COMMENT;
 					handle_node();
@@ -1017,7 +987,12 @@ node_ptr html::parser::parse(const std::string& html) {
 				}
 			break;
 		}
-	} while(c || reconsume);
+		if(!reconsume) {
+			it++;
+		} else {
+			reconsume = false;
+		}
+	}
 	new_node->type_node = node_t::text;
 	handle_node();
 	return _parent;
@@ -1040,7 +1015,7 @@ node utils::make_node(node_t type, const std::string& str, const std::map<std::s
 	return node;
 }
 
-bool utils::contains_word(const std::string& str, const std::string& word) {
+inline bool utils::contains_word(const std::string& str, const std::string& word) {
 	auto pos = str.find(word);
 	if(pos == std::string::npos) {
 		return false;
@@ -1048,6 +1023,17 @@ bool utils::contains_word(const std::string& str, const std::string& word) {
 	bool start = pos < 1 || IS_SPACE(str[pos - 1]);
 	bool end = pos + word.size() >= str.size() || IS_SPACE(str[pos + word.size()]);
 	return start && end;
+}
+
+template<class It>
+inline bool utils::ilook_ahead(It& it, It end, const std::string& str) {
+	for(std::string::size_type i = 0; i < str.size(); i++, it++) {
+		if(it == end || std::tolower(str[i]) != std::tolower(*it)) {
+			it -= i;
+			return false;
+		}
+	}
+	return true;
 }
 
 }
