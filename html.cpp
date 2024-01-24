@@ -2,16 +2,18 @@
 
 namespace html {
 
-std::unordered_set<std::string> inline_tags = {"b", "big", "i", "small", "tt",
+const std::unordered_set<std::string> inline_tags = {"b", "big", "i", "small", "tt",
 	"abbr", "acronym", "cite", "code", "dfn", "em", "kbd", "strong", "samp",
 	"time", "var", "a", "bdo", "br", "img", "map", "object", "q",
 	"span", "sub", "sup", "button", "input", "label", "select", "textarea"};
 
-std::unordered_set<std::string> void_tags = {"area", "base", "br", "col", "embed",
+const std::unordered_set<std::string> void_tags = {"area", "base", "br", "col", "embed",
 	"hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
 
-std::unordered_set<std::string> rawtext_tags = {"title", "textarea", "style", "script",
+const std::unordered_set<std::string> rawtext_tags = {"title", "textarea", "style", "script",
 	"noscript", "plaintext", "iframe", "xmp", "noembed", "noframes"};
+
+const std::string space_chars(" \f\n\r\t\v");
 
 selector::selector(std::string s) {
 	selector_matcher matcher;
@@ -332,7 +334,7 @@ void node::to_html(std::ostream& out, bool child, bool text, int level, int& dee
 		})) {
 			auto str = content;
 			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
-				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
+				str = utils::replace_any_copy(str, space_chars, " ");
 			}
 			if(last_is_block) {
 				out << '\n' << std::string(deep, ind);
@@ -400,7 +402,7 @@ void node::to_raw_html(std::ostream& out, bool child, bool text) const {
 		})) {
 			auto str = content;
 			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
-				str = std::regex_replace(str, std::regex("[\\s]+"), " ");
+				str = utils::replace_any_copy(str, space_chars, " ");
 			}
 			out << str;
 		}
@@ -481,7 +483,7 @@ std::string node::to_text(bool raw) const {
 	to_text(ret, is_block);
 	auto str = ret.str();
 	if(raw) {
-		str = std::regex_replace(str, std::regex("[\\s]+"), " ");
+		str = utils::replace_any_copy(str, space_chars, " ");
 	}
 	return str;
 }
@@ -1034,6 +1036,20 @@ inline bool utils::ilook_ahead(It& it, It end, const std::string& str) {
 		}
 	}
 	return true;
+}
+
+std::string utils::replace_any_copy(const std::string& subject, const std::string& search, const std::string& replace) {
+    size_t pos = 0, prev = 0;
+    std::string ret;
+    while((pos = subject.find_first_of(search, pos)) != std::string::npos) {
+        if(pos > prev || !pos) {
+            ret.append(subject, prev, pos - prev);
+            ret.append(replace);
+        }
+        prev = ++pos;
+    }
+    ret.append(subject, prev, std::string::npos);
+    return ret;
 }
 
 }

@@ -7,7 +7,6 @@
 #include <sstream>
 #include <vector>
 #include <unordered_set>
-#include <regex>
 #include <cctype>
 #include <algorithm>
 #include <map>
@@ -217,13 +216,11 @@ namespace html {
 	namespace utils {
 
 		node make_node(node_t, const std::string&, const std::map<std::string, std::string>& attributes = {});
-
 		template <class T, class... Args>
 		typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
 			make_unique(Args &&...args) {
 			return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 		}
-
 		template <class T>
 		typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
 			make_unique(std::size_t n) {
@@ -231,11 +228,10 @@ namespace html {
 			return std::unique_ptr<T>(new RT[n]);
 
 		}
-
 		bool contains_word(const std::string&, const std::string&);
-		
 		template<class It>
 		bool ilook_ahead(It&, It, const std::string&);
+		std::string replace_any_copy(const std::string&, const std::string&, const std::string&);
 
 	}
 
