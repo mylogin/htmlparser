@@ -627,16 +627,24 @@ void parser::handle_node() {
 }
 
 node_ptr html::parser::parse(const std::string& html) {
+	return parser::parse(html.begin(), html.end());
+}
+
+node_ptr html::parser::parse(std::istream& html) {
+	return parser::parse(std::istreambuf_iterator<char>(html), std::istreambuf_iterator<char>());
+}
+
+template<class InputIt>
+node_ptr html::parser::parse(InputIt it, InputIt end) {
 	char c = 0;
 	bool reconsume = false;
-	auto it = html.begin();
 	state = STATE_DATA;
 	auto _parent = utils::make_unique<node>();
 	current_ptr = _parent.get();
 	new_node = utils::make_unique<node>(current_ptr);
 	new_node->type_node = node_t::text;
 	std::string k;
-	while(it != html.end()) {
+	while(it != end) {
 		c = *it;
 		switch(state) {
 			case STATE_DATA: // 0
@@ -894,12 +902,14 @@ node_ptr html::parser::parse(const std::string& html) {
 				}
 			break;
 			case STATE_MARKUP_DEC_OPEN_STATE: // 42
-				if(utils::ilook_ahead(it, html.end(), "--")) {
+				if(utils::ilook_ahead(it, end, "--")) {
+					std::advance(it, 2);
 					state = STATE_COMMENT_START;
 					handle_node();
 					new_node->type_node = node_t::comment;
 					reconsume = true;
-				} else if(utils::ilook_ahead(it, html.end(), "DOCTYPE")) {
+				} else if(utils::ilook_ahead(it, end, "DOCTYPE")) {
+					std::advance(it, 7);
 					state = STATE_BEFORE_DOCTYPE_NAME;
 					handle_node();
 					new_node->type_node = node_t::doctype;
@@ -1027,11 +1037,10 @@ inline bool utils::contains_word(const std::string& str, const std::string& word
 	return start && end;
 }
 
-template<class It>
-inline bool utils::ilook_ahead(It& it, It end, const std::string& str) {
+template<class InputIt>
+inline bool utils::ilook_ahead(InputIt it, InputIt end, const std::string& str) {
 	for(std::string::size_type i = 0; i < str.size(); i++, it++) {
 		if(it == end || std::tolower(str[i]) != std::tolower(*it)) {
-			it -= i;
 			return false;
 		}
 	}

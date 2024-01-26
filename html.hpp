@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <map>
 #include <utility>
+#include <iterator>
 
 #define STATE_DATA 0
 #define STATE_RAWTEXT 3
@@ -202,7 +203,10 @@ namespace html {
 		parser& set_callback(const selector, std::function<void(node&)> cb);
 		parser& set_callback(std::function<void(err_t, node&)> cb);
 		void clear_callbacks();
-		node_ptr parse(const std::string& html);
+		node_ptr parse(const std::string&);
+		node_ptr parse(std::istream&);
+		template<class InputIt>
+		node_ptr parse(InputIt, InputIt);
 	private:
 		void operator()(node&);
 		void handle_node();
@@ -229,8 +233,8 @@ namespace html {
 
 		}
 		bool contains_word(const std::string&, const std::string&);
-		template<class It>
-		bool ilook_ahead(It&, It, const std::string&);
+		template<class InputIt>
+		bool ilook_ahead(InputIt, InputIt, const std::string&);
 		std::string replace_any_copy(const std::string&, const std::string&, const std::string&);
 
 	}
