@@ -15,12 +15,12 @@ const std::unordered_set<std::string> rawtext_tags = {"title", "textarea", "styl
 
 const std::string space_chars(" \f\n\r\t\v");
 
-selector::selector(std::string s) {
+selector::selector(const std::string& s) {
 	selector_matcher matcher;
 	condition match_condition;
 	char c = 0;
 	bool reconsume = false;
-	int state = SEL_STATE_TAG;
+	state_t state = state_t::tag;
 	if(s == "*") {
 		matcher.all_match = true;
 		matchers.push_back(std::move(matcher));
@@ -46,104 +46,104 @@ selector::selector(std::string s) {
 		}
 		reconsume = false;
 		switch(state) {
-			case SEL_STATE_ROUTE:
+			case state_t::route:
 				if(c == 0 || c == ' ') {
 					save_matcher();
-					state = SEL_STATE_TAG;
+					state = state_t::tag;
 				} else if(c == '>') {
 					if(!matcher.dc_second) {
 						matcher.dc_first = true;
 					}
 					save_matcher();
 					matcher.dc_second = true;
-					state = SEL_STATE_TAG;
+					state = state_t::tag;
 				} else if(c == '[') {
-					state = SEL_STATE_ATTR;
+					state = state_t::attr;
 				} else if(c == ':') {
-					state = SEL_STATE_OPERATOR;
+					state = state_t::st_operator;
 				} else if(c == '.') {
-					state = SEL_STATE_CLASS;
+					state = state_t::st_class;
 				} else if(c == '#') {
-					state = SEL_STATE_ID;
+					state = state_t::id;
 				} else if(c == ',') {
 					matcher.conditions.emplace_back();
-					state = SEL_STATE_TAG;
+					state = state_t::tag;
 				}
 			break;
-			case SEL_STATE_TAG:
-				if(IS_STATE_ROUTE(c)) {
+			case state_t::tag:
+				if(is_state_route(c)) {
 					save_cond(match_condition.tag_name);
 					reconsume = true;
-					state = SEL_STATE_ROUTE;
-				} else if(IS_UPPERCASE_ALPHA(c)) {
+					state = state_t::route;
+				} else if(utils::is_uppercase_alpha(c)) {
 					match_condition.tag_name += std::tolower(c);
 				} else {
 					match_condition.tag_name += c;
 				}
 			break;
-			case SEL_STATE_CLASS:
-				if(IS_STATE_ROUTE(c)) {
+			case state_t::st_class:
+				if(is_state_route(c)) {
 					save_cond(match_condition.class_name);
 					reconsume = true;
-					state = SEL_STATE_ROUTE;
+					state = state_t::route;
 				} else {
 					match_condition.class_name += c;
 				}
 			break;
-			case SEL_STATE_ID:
-				if(IS_STATE_ROUTE(c)) {
+			case state_t::id:
+				if(is_state_route(c)) {
 					save_cond(match_condition.id);
 					reconsume = true;
-					state = SEL_STATE_ROUTE;
+					state = state_t::route;
 				} else {
 					match_condition.id += c;
 				}
 			break;
-			case SEL_STATE_OPERATOR:
-				if(IS_STATE_ROUTE(c)) {
+			case state_t::st_operator:
+				if(is_state_route(c)) {
 					save_cond(match_condition.attr_operator);
 					reconsume = true;
-					state = SEL_STATE_ROUTE;
+					state = state_t::route;
 				} else if(c == '(') {
-					state = SEL_STATE_INDEX;
-				} else if(IS_UPPERCASE_ALPHA(c)) {
+					state = state_t::index;
+				} else if(utils::is_uppercase_alpha(c)) {
 					match_condition.attr_operator += std::tolower(c);
 				} else {
 					match_condition.attr_operator += c;
 				}
 			break;
-			case SEL_STATE_INDEX:
+			case state_t::index:
 				if(c == ')') {
 					save_cond(match_condition.index);
-					state = SEL_STATE_ROUTE;
-				} else if(IS_DIGIT(c)) {
+					state = state_t::route;
+				} else if(utils::is_digit(c)) {
 					match_condition.index += c;
 				}
 			break;
-			case SEL_STATE_ATTR:
+			case state_t::attr:
 				if(c == ']') {
 					save_cond(match_condition.attr);
-					state = SEL_STATE_ROUTE;
+					state = state_t::route;
 				} else if(c == '=' || c == '*' || c == '^' || c == '$' || c == '!' || c == '~' || c == '|') {
 					reconsume = true;
-					state = SEL_STATE_ATTR_OPERATOR;
-				} else if(IS_UPPERCASE_ALPHA(c)) {
+					state = state_t::attr_operator;
+				} else if(utils::is_uppercase_alpha(c)) {
 					match_condition.attr += std::tolower(c);
 				} else {
 					match_condition.attr += c;
 				}
 			break;
-			case SEL_STATE_ATTR_OPERATOR:
+			case state_t::attr_operator:
 				if(c == '\'') {
-					state = SEL_STATE_ATTR_VAL;
+					state = state_t::attr_val;
 				} else {
 					match_condition.attr_operator += c;
 				}
 			break;
-			case SEL_STATE_ATTR_VAL:
+			case state_t::attr_val:
 				if(c == '\'') {
 					save_cond(match_condition.attr_operator);
-					state = SEL_STATE_ATTR;
+					state = state_t::attr;
 				} else {
 					match_condition.attr_value += c;
 				}
@@ -330,7 +330,7 @@ void node::to_html(std::ostream& out, bool child, bool text, int level, int& dee
 		}
 	} else if(type_node == node_t::text) {
 		if(text && std::any_of(content.begin(), content.end(), [](char c) {
-			return !IS_SPACE(c);
+			return !utils::is_space(c);
 		})) {
 			auto str = content;
 			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
@@ -398,7 +398,7 @@ void node::to_raw_html(std::ostream& out, bool child, bool text) const {
 		}
 	} else if(type_node == node_t::text) {
 		if(text && std::any_of(content.begin(), content.end(), [](char c) {
-			return !IS_SPACE(c);
+			return !utils::is_space(c);
 		})) {
 			auto str = content;
 			if(parent && rawtext_tags.find(parent->tag_name) == rawtext_tags.end()) {
@@ -583,7 +583,7 @@ void parser::handle_node() {
 					new_node_ptr->self_closing = true;
 				} else if(rawtext_tags.find(new_node_ptr->tag_name) != rawtext_tags.end()) {
 					current_ptr = new_node_ptr;
-					state = STATE_RAWTEXT;
+					state = state_t::rawtext;
 				} else {
 					current_ptr = new_node_ptr;
 				}
@@ -638,7 +638,7 @@ template<class InputIt>
 node_ptr html::parser::parse(InputIt it, InputIt end) {
 	char c = 0;
 	bool reconsume = false;
-	state = STATE_DATA;
+	state = state_t::data;
 	auto _parent = utils::make_unique<node>();
 	current_ptr = _parent.get();
 	new_node = utils::make_unique<node>(current_ptr);
@@ -647,69 +647,69 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 	while(it != end) {
 		c = *it;
 		switch(state) {
-			case STATE_DATA: // 0
+			case state_t::data: // 0
 				if(c == '<') {
-					state = STATE_TAG_OPEN;
+					state = state_t::tag_open;
 				} else {
 					new_node->content += c;
 				}
 			break;
-			case STATE_RAWTEXT: // 3
+			case state_t::rawtext: // 3
 				if(c == '<') {
-					state = STATE_RAWTEXT_LESS_THAN_SIGN;
+					state = state_t::rawtext_less_than_sign;
 				} else if(c == 0x00) {
 					new_node->content += '_';
 				} else {
 					new_node->content += c;
 				}
 			break;
-			case STATE_TAG_OPEN: // 6
+			case state_t::tag_open: // 6
 				if(c == '!') {
-					state = STATE_MARKUP_DEC_OPEN_STATE;
+					state = state_t::markup_dec_open_state;
 				} else if(c == '/') {
-					state = STATE_END_TAG_OPEN;
-				} else if(IS_ALPHA(c)) {
-					state = STATE_TAG_NAME;
+					state = state_t::end_tag_open;
+				} else if(utils::is_alpha(c)) {
+					state = state_t::tag_name;
 					handle_node();
 					new_node->type_node = node_t::tag;
 					new_node->type_tag = tag_t::open;
 					reconsume = true;
 				} else if(c == '?') {
-					state = STATE_BOGUS_COMMENT;
+					state = state_t::bogus_comment;
 					handle_node();
 					new_node->type_node = node_t::comment;
 					reconsume = true;
 				} else {
 					new_node->content += '<';
 					reconsume = true;
-					state = STATE_DATA;
+					state = state_t::data;
 				}
 			break;
-			case STATE_END_TAG_OPEN: // 7
-				if(IS_ALPHA(c)) {
-					state = STATE_TAG_NAME;
+			case state_t::end_tag_open: // 7
+				if(utils::is_alpha(c)) {
+					state = state_t::tag_name;
 					handle_node();
 					new_node->type_node = node_t::tag;
 					new_node->type_tag = tag_t::close;
 					reconsume = true;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 				} else {
-					state = STATE_BOGUS_COMMENT;
+					state = state_t::bogus_comment;
 					handle_node();
 					new_node->type_node = node_t::comment;
 					reconsume = true;
 				}
 			break;
-			case STATE_TAG_NAME: // 8
-				if(IS_SPACE(c)) {
-					state = STATE_BEFORE_ATTRIBUTE_NAME;
+			case state_t::tag_name: // 8
+				if(utils::is_space(c)) {
+					state = state_t::before_attribute_name;
 				} else if(c == '/') {
-					state = STATE_SELF_CLOSING;
+					state = state_t::self_closing;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
-				} else if(IS_UPPERCASE_ALPHA(c)) {
+				} else if(utils::is_uppercase_alpha(c)) {
 					new_node->tag_name += std::tolower(c);
 				} else if(c == 0x00) {
 					new_node->tag_name += '_';
@@ -717,50 +717,50 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					new_node->tag_name += c;
 				}
 			break;
-			case STATE_RAWTEXT_LESS_THAN_SIGN: // 12
+			case state_t::rawtext_less_than_sign: // 12
 				if(c == '/') {
-					state = STATE_RAWTEXT_END_TAG_OPEN;
+					state = state_t::rawtext_end_tag_open;
 				} else {
 					new_node->content += '<';
 					reconsume = true;
-					state = STATE_RAWTEXT;
+					state = state_t::rawtext;
 				}
 			break;
-			case STATE_RAWTEXT_END_TAG_OPEN: // 13
-				if(IS_ALPHA(c)) {
+			case state_t::rawtext_end_tag_open: // 13
+				if(utils::is_alpha(c)) {
 					new_node->type_node = node_t::tag;
 					new_node->type_tag = tag_t::close;
 					reconsume = true;
-					state = STATE_RAWTEXT_END_TAG_NAME;
+					state = state_t::rawtext_end_tag_name;
 				} else {
 					new_node->content += '<';
 					new_node->content += '/';
 					reconsume = true;
-					state = STATE_RAWTEXT;
+					state = state_t::rawtext;
 				}
 			break;
-			case STATE_RAWTEXT_END_TAG_NAME: { // 14
+			case state_t::rawtext_end_tag_name: { // 14
 				bool anything_else = true;
-				if(IS_SPACE(c)) {
+				if(utils::is_space(c)) {
 					if(new_node->tag_name == current_ptr->tag_name) {
-						state = STATE_BEFORE_ATTRIBUTE_NAME;
+						state = state_t::before_attribute_name;
 						anything_else = false;
 					}
 				} else if(c == '/') {
 					if(new_node->tag_name == current_ptr->tag_name) {
-						state = STATE_SELF_CLOSING;
+						state = state_t::self_closing;
 						anything_else = false;
 					}
 				} else if(c == '>') {
 					if(new_node->tag_name == current_ptr->tag_name) {
-						state = STATE_DATA;
+						state = state_t::data;
 						handle_node();
 						anything_else = false;
 					}
-				} else if(IS_UPPERCASE_ALPHA(c)) {
+				} else if(utils::is_uppercase_alpha(c)) {
 					new_node->tag_name += std::tolower(c);
 					anything_else = false;
-				} else if(IS_LOWERCASE_ALPHA(c)) {
+				} else if(utils::is_lowercase_alpha(c)) {
 					new_node->tag_name += c;
 					anything_else = false;
 				}
@@ -770,33 +770,33 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					new_node->content += new_node->tag_name;
 					new_node->tag_name.clear();
 					reconsume = true;
-					state = STATE_RAWTEXT;
+					state = state_t::rawtext;
 				}
 			}
 			break;
-			case STATE_BEFORE_ATTRIBUTE_NAME: // 32
-				if(IS_SPACE(c)) {
+			case state_t::before_attribute_name: // 32
+				if(utils::is_space(c)) {
 					// skip
 				} else if(c == '/' || c == '>') {
 					reconsume = true;
-					state = STATE_AFTER_ATTRIBUTE_NAME;
+					state = state_t::after_attribute_name;
 				} else if(c == '=') {
 					k = c;
-					state = STATE_ATTRIBUTE_NAME;
+					state = state_t::attribute_name;
 				} else {
 					k.clear();
 					reconsume = true;
-					state = STATE_ATTRIBUTE_NAME;
+					state = state_t::attribute_name;
 				}
 			break;
-			case STATE_ATTRIBUTE_NAME: // 33
-				if(IS_SPACE(c) || c == '/' || c == '>') {
+			case state_t::attribute_name: // 33
+				if(utils::is_space(c) || c == '/' || c == '>') {
 					new_node->attributes[k];
 					reconsume = true;
-					state = STATE_AFTER_ATTRIBUTE_NAME;
+					state = state_t::after_attribute_name;
 				} else if(c == '=') {
 					new_node->attributes[k];
-					state = STATE_BEFORE_ATTRIBUTE_VALUE;
+					state = state_t::before_attribute_value;
 				} else if(c == 0x00) {
 					k += '_';
 				} else if(c == '\'' || c == '"' || c == '<') {
@@ -805,60 +805,60 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					k += std::tolower(c);
 				}
 			break;
-			case STATE_AFTER_ATTRIBUTE_NAME: // 34
-				if(IS_SPACE(c)) {
+			case state_t::after_attribute_name: // 34
+				if(utils::is_space(c)) {
 					// skip
 				} else if(c == '/') {
-					state = STATE_SELF_CLOSING;
+					state = state_t::self_closing;
 				} else if(c == '=') {
-					state = STATE_BEFORE_ATTRIBUTE_VALUE;
+					state = state_t::before_attribute_value;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					k.clear();
 					reconsume = true;
-					state = STATE_ATTRIBUTE_NAME;
+					state = state_t::attribute_name;
 				}
 			break;
-			case STATE_BEFORE_ATTRIBUTE_VALUE: // 35
-				if(IS_SPACE(c)) {
+			case state_t::before_attribute_value: // 35
+				if(utils::is_space(c)) {
 					// skip
 				} else if(c == '"') {
-					state = STATE_ATTRIBUTE_VALUE_DOUBLE;
+					state = state_t::attribute_value_double;
 				} else if(c == '\'') {
-					state = STATE_ATTRIBUTE_VALUE_SINGLE;
+					state = state_t::attribute_value_single;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					reconsume = true;
-					state = STATE_ATTRIBUTE_VALUE_UNQUOTED;
+					state = state_t::attribute_value_unquoted;
 				}
 			break;
-			case STATE_ATTRIBUTE_VALUE_DOUBLE: // 36
+			case state_t::attribute_value_double: // 36
 				if(c == '"') {
-					state = STATE_AFTER_ATTRIBUTE_VALUE_QUOTED;
+					state = state_t::after_attribute_value_quoted;
 				} else if(c == 0x00) {
 					new_node->attributes[k] += '_';
 				} else {
 					new_node->attributes[k] += c;
 				}
 			break;
-			case STATE_ATTRIBUTE_VALUE_SINGLE: // 37
+			case state_t::attribute_value_single: // 37
 				if(c == '\'') {
-					state = STATE_AFTER_ATTRIBUTE_VALUE_QUOTED;
+					state = state_t::after_attribute_value_quoted;
 				} else if(c == 0x00) {
 					new_node->attributes[k] += '_';
 				} else {
 					new_node->attributes[k] += c;
 				}
 			break;
-			case STATE_ATTRIBUTE_VALUE_UNQUOTED: // 38
-				if(IS_SPACE(c)) {
-					state = STATE_BEFORE_ATTRIBUTE_NAME;
+			case state_t::attribute_value_unquoted: // 38
+				if(utils::is_space(c)) {
+					state = state_t::before_attribute_name;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else if(c == 0x00) {
 					new_node->attributes[k] += '_';
@@ -868,32 +868,32 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					new_node->attributes[k] += c;
 				}
 			break;
-			case STATE_AFTER_ATTRIBUTE_VALUE_QUOTED: // 39
-				if(IS_SPACE(c)) {
-					state = STATE_BEFORE_ATTRIBUTE_NAME;
+			case state_t::after_attribute_value_quoted: // 39
+				if(utils::is_space(c)) {
+					state = state_t::before_attribute_name;
 				} else if(c == '/') {
-					state = STATE_SELF_CLOSING;
+					state = state_t::self_closing;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					reconsume = true;
-					state = STATE_BEFORE_ATTRIBUTE_NAME;
+					state = state_t::before_attribute_name;
 				}
 			break;
-			case STATE_SELF_CLOSING: // 40
+			case state_t::self_closing: // 40
 				if(c == '>') {
 					new_node->self_closing = true;
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					reconsume = true;
-					state = STATE_BEFORE_ATTRIBUTE_NAME;
+					state = state_t::before_attribute_name;
 				}
 			break;
-			case STATE_BOGUS_COMMENT: // 41
+			case state_t::bogus_comment: // 41
 				if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else if(c == 0x00) {
 					new_node->content += '_';
@@ -901,69 +901,69 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					new_node->content += c;
 				}
 			break;
-			case STATE_MARKUP_DEC_OPEN_STATE: // 42
+			case state_t::markup_dec_open_state: // 42
 				if(utils::ilook_ahead(it, end, "--")) {
 					std::advance(it, 2);
-					state = STATE_COMMENT_START;
+					state = state_t::comment_start;
 					handle_node();
 					new_node->type_node = node_t::comment;
 					reconsume = true;
 				} else if(utils::ilook_ahead(it, end, "DOCTYPE")) {
 					std::advance(it, 7);
-					state = STATE_BEFORE_DOCTYPE_NAME;
+					state = state_t::before_doctype_name;
 					handle_node();
 					new_node->type_node = node_t::doctype;
 					reconsume = true;
 				} else {
-					state = STATE_BOGUS_COMMENT;
+					state = state_t::bogus_comment;
 					handle_node();
 					new_node->type_node = node_t::comment;
 					new_node->bogus_comment = true;
 					new_node->content += c;
 				}
 			break;
-			case STATE_COMMENT_START: // 43
+			case state_t::comment_start: // 43
 				if(c == '-') {
-					state = STATE_COMMENT_START_DASH;
+					state = state_t::comment_start_dash;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					reconsume = true;
-					state = STATE_COMMENT;
+					state = state_t::comment;
 				}
 			break;
-			case STATE_COMMENT_START_DASH: // 44
+			case state_t::comment_start_dash: // 44
 				if(c == '-') {
-					state = STATE_COMMENT_END;
+					state = state_t::comment_end;
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else {
 					new_node->content += '-';
-					state = STATE_COMMENT;
+					state = state_t::comment;
 				}
 			break;
-			case STATE_COMMENT: // 45
+			case state_t::comment: // 45
 				if(c == '-') {
-					state = STATE_COMMENT_END_DASH;
+					state = state_t::comment_end_dash;
 				} else if(c == 0x00) {
 					new_node->content += '_';
 				} else {
 					new_node->content += c;
 				}
 			break;
-			case STATE_COMMENT_END_DASH: // 50
+			case state_t::comment_end_dash: // 50
 				if(c == '-') {
-					state = STATE_COMMENT_END;
+					state = state_t::comment_end;
 				} else {
 					new_node->content += '-';
-					state = STATE_COMMENT;
+					state = state_t::comment;
 				}
 			break;
-			case STATE_COMMENT_END: // 51
+			case state_t::comment_end: // 51
 				if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else if(c == '-') {
 					new_node->content += c;
@@ -971,26 +971,26 @@ node_ptr html::parser::parse(InputIt it, InputIt end) {
 					new_node->content += '-';
 					new_node->content += '-';
 					reconsume = true;
-					state = STATE_COMMENT;
+					state = state_t::comment;
 				}
 			break;
-			case STATE_BEFORE_DOCTYPE_NAME: // 54
-				if(IS_SPACE(c)) {
+			case state_t::before_doctype_name: // 54
+				if(utils::is_space(c)) {
 					// skip
 				} else if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else if(c == 0x00) {
 					new_node->content += '_';
-					state = STATE_DOCTYPE_NAME;
+					state = state_t::doctype_name;
 				} else {
 					new_node->content += c;
-					state = STATE_DOCTYPE_NAME;
+					state = state_t::doctype_name;
 				}
 			break;
-			case STATE_DOCTYPE_NAME: // 55
+			case state_t::doctype_name: // 55
 				if(c == '>') {
-					state = STATE_DATA;
+					state = state_t::data;
 					handle_node();
 				} else if(c == 0x00) {
 					new_node->content += '_';
@@ -1032,8 +1032,8 @@ inline bool utils::contains_word(const std::string& str, const std::string& word
 	if(pos == std::string::npos) {
 		return false;
 	}
-	bool start = pos < 1 || IS_SPACE(str[pos - 1]);
-	bool end = pos + word.size() >= str.size() || IS_SPACE(str[pos + word.size()]);
+	bool start = pos < 1 || is_space(str[pos - 1]);
+	bool end = pos + word.size() >= str.size() || is_space(str[pos + word.size()]);
 	return start && end;
 }
 

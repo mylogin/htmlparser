@@ -13,50 +13,6 @@
 #include <utility>
 #include <iterator>
 
-#define STATE_DATA 0
-#define STATE_RAWTEXT 3
-#define STATE_TAG_OPEN 6
-#define STATE_END_TAG_OPEN 7
-#define STATE_TAG_NAME 8
-#define STATE_RAWTEXT_LESS_THAN_SIGN 12
-#define STATE_RAWTEXT_END_TAG_OPEN 13
-#define STATE_RAWTEXT_END_TAG_NAME 14
-#define STATE_BEFORE_ATTRIBUTE_NAME 32
-#define STATE_ATTRIBUTE_NAME 33
-#define STATE_AFTER_ATTRIBUTE_NAME 34
-#define STATE_BEFORE_ATTRIBUTE_VALUE 35
-#define STATE_ATTRIBUTE_VALUE_DOUBLE 36
-#define STATE_ATTRIBUTE_VALUE_SINGLE 37
-#define STATE_ATTRIBUTE_VALUE_UNQUOTED 38
-#define STATE_AFTER_ATTRIBUTE_VALUE_QUOTED 39
-#define STATE_SELF_CLOSING 40
-#define STATE_BOGUS_COMMENT 41
-#define STATE_MARKUP_DEC_OPEN_STATE 42
-#define STATE_COMMENT_START 43
-#define STATE_COMMENT_START_DASH 44
-#define STATE_COMMENT 45
-#define STATE_COMMENT_END_DASH 50
-#define STATE_COMMENT_END 51
-#define STATE_BEFORE_DOCTYPE_NAME 54
-#define STATE_DOCTYPE_NAME 55
-
-#define SEL_STATE_ROUTE 0
-#define SEL_STATE_TAG 1
-#define SEL_STATE_CLASS 2
-#define SEL_STATE_ID 3
-#define SEL_STATE_OPERATOR 4
-#define SEL_STATE_INDEX 5
-#define SEL_STATE_ATTR 6
-#define SEL_STATE_ATTR_OPERATOR 7
-#define SEL_STATE_ATTR_VAL 8
-
-#define IS_UPPERCASE_ALPHA(c) ('A' <= c && c <= 'Z')
-#define IS_LOWERCASE_ALPHA(c) ('a' <= c && c <= 'z')
-#define IS_ALPHA(c) (IS_UPPERCASE_ALPHA(c) || IS_LOWERCASE_ALPHA(c))
-#define IS_DIGIT(c) ('0' <= c && c <= '9')
-#define IS_SPACE(c) (c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20 || c == 0x0D)
-#define IS_STATE_ROUTE(c) (c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',' || c == '>')
-
 namespace html {
 
 	class selector;
@@ -117,6 +73,18 @@ namespace html {
 		std::vector<node_ptr>::iterator end() {
 			return children.end();
 		}
+		std::vector<node_ptr>::const_iterator begin() const {
+			return children.begin();
+		}
+		std::vector<node_ptr>::const_iterator end() const {
+			return children.end();
+		}
+		std::vector<node_ptr>::const_iterator cbegin() const {
+			return children.cbegin();
+		}
+		std::vector<node_ptr>::const_iterator cend() const {
+			return children.cend();
+		}
 		std::vector<node*> select(const selector, bool nested = true);
 		std::string to_html(char indent = '	', bool child = true, bool text = true) const;
 		std::string to_raw_html(bool child = true, bool text = true) const;
@@ -155,7 +123,7 @@ namespace html {
 	class selector {
 	public:
 		selector() = default;
-		selector(const std::string);
+		selector(const std::string&);
 		selector(const char* s) : selector(std::string(s)) {}
 		operator bool() const {
 			return !matchers.empty();
@@ -193,6 +161,12 @@ namespace html {
 			return matchers.end();
 		}
 		std::vector<selector_matcher> matchers;
+		enum class state_t {
+			route, tag, st_class, id, st_operator, index, attr, attr_operator, attr_val
+		};
+		bool is_state_route(char c) {
+			return c == 0 || c == ' ' || c == '[' || c == ':' || c == '.' || c == '#' || c == ',' || c == '>';
+		}
 		friend class node;
 		friend class parser;
 	};
@@ -210,11 +184,17 @@ namespace html {
 	private:
 		void operator()(node&);
 		void handle_node();
-		int state = STATE_DATA;
 		node* current_ptr = nullptr;
 		node_ptr new_node;
 		std::vector<std::pair<selector, std::function<void(node&)>>> callback_node;
 		std::vector<std::function<void(err_t, node&)>> callback_err;
+		enum class state_t {
+			data, rawtext, tag_open, end_tag_open, tag_name, rawtext_less_than_sign, rawtext_end_tag_open, rawtext_end_tag_name, 
+			before_attribute_name, attribute_name, after_attribute_name, before_attribute_value, attribute_value_double, 
+			attribute_value_single, attribute_value_unquoted, after_attribute_value_quoted, self_closing, bogus_comment, 
+			markup_dec_open_state, comment_start, comment_start_dash, comment, comment_end_dash, comment_end, 
+			before_doctype_name, doctype_name
+		} state;
 	};
 
 	namespace utils {
@@ -236,6 +216,21 @@ namespace html {
 		template<class InputIt>
 		bool ilook_ahead(InputIt, InputIt, const std::string&);
 		std::string replace_any_copy(const std::string&, const std::string&, const std::string&);
+		inline bool is_uppercase_alpha(char c) {
+			return 'A' <= c && c <= 'Z';
+		}
+		inline bool is_lowercase_alpha(char c) {
+			return 'a' <= c && c <= 'z';
+		}
+		inline bool is_alpha(char c) {
+			return is_uppercase_alpha(c) || is_lowercase_alpha(c);
+		}
+		inline bool is_digit(char c) {
+			return '0' <= c && c <= '9';
+		}
+		inline bool is_space(char c) {
+			return c == 0x09 || c == 0x0A || c == 0x0C || c == 0x20 || c == 0x0D;
+		}
 
 	}
 
